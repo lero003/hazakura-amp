@@ -1,0 +1,23 @@
+# macOS
+.DS_Store
+
+# Xcode
+build/
+DerivedData/
+*.xcodeproj/xcuserdata/
+*.xcworkspace/xcuserdata/
+*.xcuserstate
+xcuserdata/
+
+# Swift Package Manager
+.swiftpm/
+.build/
+Package.resolved
+
+# Misc
+*.swp
+.vscode/
+.idea/
+
+# xcodegen-generated artifacts (regenerate with `xcodegen generate`)
+spike/*/build/

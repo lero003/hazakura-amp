@@ -1,0 +1,100 @@
+name: CoreAudioTapPoC
+options:
+  bundleIdPrefix: dev.keisetsu.hazakura-volume-booster
+  deploymentTarget:
+    macOS: "26.0"
+  createIntermediateGroups: true
+  groupSortPosition: top
+  generateEmptyDirectories: true
+  developmentLanguage: en
+
+settings:
+  base:
+    SWIFT_VERSION: "6.0"
+    SWIFT_STRICT_CONCURRENCY: complete
+    MACOSX_DEPLOYMENT_TARGET: "26.0"
+    ENABLE_HARDENED_RUNTIME: YES
+    CODE_SIGN_STYLE: Automatic
+    CODE_SIGN_IDENTITY: "-"
+    DEVELOPMENT_TEAM: ""
+    ENABLE_USER_SCRIPT_SANDBOXING: NO
+    CLANG_CXX_LANGUAGE_STANDARD: "c++17"
+    CLANG_ENABLE_OBJC_ARC: YES
+    CLANG_ENABLE_MODULES: YES
+
+targets:
+  CoreAudioTapPoC:
+    type: application
+    platform: macOS
+    deploymentTarget: "26.0"
+    sources:
+      - path: CoreAudioTapPoC
+        excludes:
+          - "Resources/Info.plist"
+          - "Resources/CoreAudioTapPoC.entitlements"
+    resources:
+      - path: CoreAudioTapPoC/Resources/Info.plist
+        buildPhase: none
+    info:
+      path: CoreAudioTapPoC/Resources/Info.plist
+      properties:
+        LSMinimumSystemVersion: "26.0"
+        LSUIElement: true
+        NSAudioCaptureUsageDescription: "Hazakura Boost PoC uses access to system audio output to apply a local volume boost. It does not record, store, or transmit audio."
+        NSHumanReadableCopyright: "Hazakura Boost PoC — Core Audio Tap verification"
+        CFBundleShortVersionString: "0.0.1"
+        CFBundleVersion: "1"
+    entitlements:
+      path: CoreAudioTapPoC/Resources/CoreAudioTapPoC.entitlements
+    settings:
+      base:
+        PRODUCT_BUNDLE_IDENTIFIER: dev.keisetsu.hazakura-volume-booster.poc
+        PRODUCT_NAME: "CoreAudioTapPoC"
+        ASSETCATALOG_COMPILER_APPICON_NAME: ""
+        GENERATE_INFOPLIST_FILE: NO
+        CODE_SIGN_ENTITLEMENTS: CoreAudioTapPoC/Resources/CoreAudioTapPoC.entitlements
+        ENABLE_HARDENED_RUNTIME: YES
+        DEAD_CODE_STRIPPING: YES
+        SWIFT_TREAT_WARNINGS_AS_ERRORS: NO
+        GCC_TREAT_WARNINGS_AS_ERRORS: NO
+        SWIFT_OBJC_BRIDGING_HEADER: CoreAudioTapPoC/CoreAudioTapPoC-Bridging-Header.h
+    dependencies:
+      - sdk: AudioToolbox.framework
+      - sdk: AVFAudio.framework
+      - sdk: CoreAudio.framework
+      - sdk: CoreMedia.framework
+      - sdk: ScreenCaptureKit.framework
+      - sdk: AppKit.framework
+      - sdk: SwiftUI.framework
+
+  CoreAudioTapPoCTests:
+    type: bundle.unit-test
+    platform: macOS
+    deploymentTarget: "26.0"
+    sources:
+      - path: CoreAudioTapPoCTests
+    settings:
+      base:
+        PRODUCT_BUNDLE_IDENTIFIER: dev.keisetsu.hazakura-volume-booster.poc.tests
+        GENERATE_INFOPLIST_FILE: YES
+    dependencies:
+      - target: CoreAudioTapPoC
+
+schemes:
+  CoreAudioTapPoC:
+    build:
+      targets:
+        CoreAudioTapPoC: all
+        CoreAudioTapPoCTests: [test]
+    run:
+      config: Debug
+    test:
+      config: Debug
+      targets:
+        - CoreAudioTapPoCTests
+    profile:
+      config: Release
+    analyze:
+      config: Debug
+    archive:
+      config: Release
