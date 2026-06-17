@@ -267,6 +267,7 @@ log stream --predicate 'subsystem == "dev.keisetsu.hazakura-volume-booster.poc"'
 
 ```
 [ ] YouTube 音声を取得できた
+[ ] 0% で音量を絞れる
 [ ] 100%（素通し）で原音と同等に聴こえる
 [ ] 200% / 400% で音量が明確に上がる
 [ ] 元音と加工後音が二重に鳴らない

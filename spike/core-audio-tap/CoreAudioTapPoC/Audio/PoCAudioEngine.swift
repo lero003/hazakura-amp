@@ -14,7 +14,7 @@
 //    [スピーカー / ヘッドホン]
 //
 //  状態:
-//  - configuredGain: スライダーで設定された値（1.0〜4.0）。ON/OFF に関係なく保持。
+//  - configuredGain: スライダーで設定された値（0.0〜4.0）。ON/OFF に関係なく保持。
 //  - isEnabled:      ブースト処理の ON/OFF。OFF 時は effectiveGain = 1.0。
 //  - effectiveGain:  backend に渡す目標ゲイン。
 //
@@ -97,7 +97,7 @@ final class PoCAudioEngine: ObservableObject {
 
     // MARK: - Published state
 
-    /// スライダー設定値（1.0〜4.0 = 100%〜400%）。ON/OFF に関係なく保持する。
+    /// スライダー設定値（0.0〜4.0 = 0%〜400%）。ON/OFF に関係なく保持する。
     @Published var configuredGain: Double = 1.0 {
         didSet {
             let sanitized = Self.sanitizedGain(configuredGain)
@@ -473,7 +473,7 @@ final class PoCAudioEngine: ObservableObject {
 
     private static func sanitizedGain(_ gain: Double) -> Double {
         guard gain.isFinite else { return 1.0 }
-        return min(4.0, max(1.0, gain))
+        return min(4.0, max(0.0, gain))
     }
 
     private static func isPermissionDeniedError(_ error: Error) -> Bool {

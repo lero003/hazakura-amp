@@ -7,10 +7,9 @@ struct CoreAudioTapPoCApp: App {
     @NSApplicationDelegateAdaptor(CoreAudioTapPoCAppDelegate.self) private var appDelegate
 
     var body: some Scene {
-        MenuBarExtra("Hazakura Boost", systemImage: "speaker.wave.2.fill") {
-            ContentView(engine: appDelegate.engine)
+        Settings {
+            EmptyView()
         }
-        .menuBarExtraStyle(.window)
     }
 }
 
@@ -18,6 +17,7 @@ struct CoreAudioTapPoCApp: App {
 final class CoreAudioTapPoCAppDelegate: NSObject, NSApplicationDelegate {
     let engine = PoCAudioEngine()
 
+    private var statusItemController: RightClickableStatusButton?
     private var sleepObserver: Any?
     private var wakeObserver: Any?
     private var screensWakeObserver: Any?
@@ -33,6 +33,7 @@ final class CoreAudioTapPoCAppDelegate: NSObject, NSApplicationDelegate {
             }
         }
 
+        statusItemController = RightClickableStatusButton(engine: engine)
         let center = NSWorkspace.shared.notificationCenter
         sleepObserver = center.addObserver(
             forName: NSWorkspace.willSleepNotification,
@@ -68,6 +69,8 @@ final class CoreAudioTapPoCAppDelegate: NSObject, NSApplicationDelegate {
 
     func applicationWillTerminate(_ notification: Notification) {
         engine.shutdownForAppTermination()
+        statusItemController?.invalidate()
+        statusItemController = nil
         removeLifecycleObservers()
         releaseSingleInstanceLock()
     }
@@ -120,5 +123,73 @@ final class CoreAudioTapPoCAppDelegate: NSObject, NSApplicationDelegate {
         ProcessInfo.processInfo.environment["XCTestConfigurationFilePath"] != nil ||
             NSClassFromString("XCTest.XCTestCase") != nil ||
             NSClassFromString("XCTestCase") != nil
+    }
+}
+
+@MainActor
+final class RightClickableStatusButton: NSObject {
+    private let engine: PoCAudioEngine
+    private let statusItem: NSStatusItem
+    private let popover = NSPopover()
+    private lazy var quitMenu: NSMenu = makeQuitMenu()
+
+    init(engine: PoCAudioEngine) {
+        self.engine = engine
+        self.statusItem = NSStatusBar.system.statusItem(withLength: NSStatusItem.squareLength)
+        super.init()
+
+        let hostingController = NSHostingController(rootView: ContentView(engine: engine))
+        popover.contentViewController = hostingController
+        popover.behavior = .transient
+
+        if let button = statusItem.button {
+            button.image = NSImage(systemSymbolName: "speaker.wave.2.fill", accessibilityDescription: "Hazakura Boost")
+            button.imagePosition = .imageOnly
+            button.target = self
+            button.action = #selector(handleStatusButtonAction(_:))
+            button.sendAction(on: [.leftMouseUp, .rightMouseUp])
+        }
+    }
+
+    func invalidate() {
+        NSStatusBar.system.removeStatusItem(statusItem)
+    }
+
+    @objc private func handleStatusButtonAction(_ sender: NSStatusBarButton) {
+        switch NSApplication.shared.currentEvent?.type {
+        case .rightMouseUp:
+            showQuitMenu(from: sender)
+        default:
+            togglePopover(from: sender)
+        }
+    }
+
+    @objc private func quitFromMenu() {
+        engine.shutdownForAppTermination()
+        NSApplication.shared.terminate(nil)
+    }
+
+    private func togglePopover(from button: NSStatusBarButton) {
+        if popover.isShown {
+            popover.performClose(nil)
+        } else {
+            popover.show(relativeTo: button.bounds, of: button, preferredEdge: .minY)
+            popover.contentViewController?.view.window?.makeKey()
+        }
+    }
+
+    private func showQuitMenu(from button: NSStatusBarButton) {
+        if popover.isShown {
+            popover.performClose(nil)
+        }
+        quitMenu.popUp(positioning: nil, at: NSPoint(x: 0, y: button.bounds.height + 2), in: button)
+    }
+
+    private func makeQuitMenu() -> NSMenu {
+        let menu = NSMenu()
+        let quitItem = NSMenuItem(title: "終了", action: #selector(quitFromMenu), keyEquivalent: "q")
+        quitItem.target = self
+        menu.addItem(quitItem)
+        return menu
     }
 }

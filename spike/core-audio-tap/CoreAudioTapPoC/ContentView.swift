@@ -115,10 +115,10 @@ struct ContentView: View {
                     .frame(minWidth: 100, alignment: .trailing)
             }
 
-            Slider(value: $engine.configuredGain, in: 1.0...4.0, step: 0.01) {
+            Slider(value: $engine.configuredGain, in: 0.0...4.0, step: 0.01) {
                 Text("Boost gain")
             } minimumValueLabel: {
-                Text("100%").font(.caption2)
+                Text("0%").font(.caption2)
             } maximumValueLabel: {
                 Text("400%").font(.caption2)
             }
@@ -145,6 +145,7 @@ struct ContentView: View {
             }
 
             HStack(spacing: 8) {
+                presetButton("0%", value: 0.0)
                 presetButton("100%", value: 1.0)
                 presetButton("200%", value: 2.0)
                 presetButton("400%", value: 4.0)

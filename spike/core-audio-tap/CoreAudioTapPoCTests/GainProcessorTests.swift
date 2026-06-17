@@ -226,14 +226,16 @@ final class GainProcessorTests: XCTestCase {
     }
 
     @MainActor
-    func testEffectiveGainDoesNotDropBelowNeutral() async {
+    func testEffectiveGainSupportsAttenuationBelowNeutral() async throws {
         let backend = FakeAudioProcessingBackend()
         let engine = PoCAudioEngine(audioBackend: backend, monitorsOutputDeviceChanges: false)
 
         engine.configuredGain = 0.25
         await engine.startAsync()
 
-        XCTAssertEqual(engine.effectiveGain, 1.0, accuracy: 0.001)
+        XCTAssertEqual(engine.effectiveGain, 0.25, accuracy: 0.001)
+        let lastGain = try XCTUnwrap(backend.appliedGains.last)
+        XCTAssertEqual(lastGain, 0.25, accuracy: 0.001)
     }
 
     func testAudioBackendMeterUsesConfiguredGainAfterOriginalOutputIsMuted() {
@@ -387,10 +389,25 @@ final class GainProcessorTests: XCTestCase {
         XCTAssertEqual(engine.configuredGain, 1.0, accuracy: 0.001)
 
         engine.configuredGain = 0.25
-        XCTAssertEqual(engine.configuredGain, 1.0, accuracy: 0.001)
+        XCTAssertEqual(engine.configuredGain, 0.25, accuracy: 0.001)
+
+        engine.configuredGain = -1.0
+        XCTAssertEqual(engine.configuredGain, 0.0, accuracy: 0.001)
 
         engine.configuredGain = 9.0
         XCTAssertEqual(engine.configuredGain, 4.0, accuracy: 0.001)
+    }
+
+    func testMenuBarStatusItemSourceSupportsRightClickQuit() throws {
+        let source = try String(
+            contentsOfFile: repositoryFile("spike/core-audio-tap/CoreAudioTapPoC/CoreAudioTapPoCApp.swift"),
+            encoding: .utf8
+        )
+
+        XCTAssertTrue(source.contains("RightClickableStatusButton"))
+        XCTAssertTrue(source.contains("rightMouseUp"))
+        XCTAssertTrue(source.contains("quitMenu"))
+        XCTAssertTrue(source.contains("NSApplication.shared.terminate(nil)"))
     }
 
     @MainActor
