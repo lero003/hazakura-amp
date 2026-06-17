@@ -2,7 +2,7 @@
 
 > 関連: [企画書 §権限説明](../hazakura-amp企画書.md) / [RISKS §App Sandbox と Audio Capture](./RISKS.md) / [DEVELOPMENT](./DEVELOPMENT.md)
 
-Hazakura Amp!は、Macの「**再生されている音**」にソフトウェアから手を入れるアプリである以上、**OSの権限モデル・配布形態・プライバシーポリシー**の扱いに慎重である必要がある。ユーザにとって「音量を上げるだけのアプリ」が、なぜかマイク権限を要求してきたら不信感を覚えるし、その逆もしかり。
+Hazakura Ampは、Macの「**再生されている音**」にソフトウェアから手を入れるアプリである以上、**OSの権限モデル・配布形態・プライバシーポリシー**の扱いに慎重である必要がある。ユーザにとって「音量を上げるだけのアプリ」が、なぜかマイク権限を要求してきたら不信感を覚えるし、その逆もしかり。
 
 このドキュメントでは、macOSのオーディオ/サンドボックス/署名/公証/Privacy Manifest/配布経路の観点を整理する。
 
@@ -21,14 +21,14 @@ Hazakura Amp!は、Macの「**再生されている音**」にソフトウェア
 
 ### マイク vs システム出力タップ — 明確に分離する
 
-| 用途 | 必要になり得るもの | Hazakura Amp! での扱い |
+| 用途 | 必要になり得るもの | Hazakura Amp での扱い |
 |---|---|---|
 | マイク入力 | `NSMicrophoneUsageDescription` + `com.apple.security.device.audio-input` | **使わない（記述しない）** |
 | **システム出力タップ** | **`NSAudioCaptureUsageDescription`（Info.plist）**。Sandbox下では制約あり | **使う** |
 | オーディオルーティングの操作 | `com.apple.security.device.audio`（古いentitlement） | **不要想定** |
 | アクセシビリティ/入力監視（ホットキー） | `com.apple.security.accessibility` 相当のユーザ許可 | v0.2 で必要になるか **実装方式次第で回避** |
 
-> 重要: 日本語で「音声キャプチャ」と書くと **マイク入力** を連想させやすい。Hazakura Amp!が行うのは **出力のタップ** であり、**マイクへのアクセス要求は出さない**。アプリ内の文言・README・App Store 説明でも、マイクという言葉を使わない。`NSMicrophoneUsageDescription` を **書かない** ことが、マイク不使用の最も強いシグナル。
+> 重要: 日本語で「音声キャプチャ」と書くと **マイク入力** を連想させやすい。Hazakura Ampが行うのは **出力のタップ** であり、**マイクへのアクセス要求は出さない**。アプリ内の文言・README・App Store 説明でも、マイクという言葉を使わない。`NSMicrophoneUsageDescription` を **書かない** ことが、マイク不使用の最も強いシグナル。
 >
 > 一方、`Core Audio Tap` で他アプリのシステム出力を扱う場合、macOS は **「システム音声キャプチャ」のため Info.plist の `NSAudioCaptureUsageDescription` を要求する**（マイクとは別のキー）。これを **書かない** と Core Audio Tap 自体が起動できない。**マイク不使用の方針は維持しつつ、システム出力キャプチャの説明は明示的に書く**。
 
@@ -40,7 +40,7 @@ Hazakura Amp!は、Macの「**再生されている音**」にソフトウェア
 
 <!-- システム出力タップのため必須。マイクではないことを明示 -->
 <key>NSAudioCaptureUsageDescription</key>
-<string>Hazakura Amp! uses access to system audio output to apply a local volume boost. It does not record, store, or transmit audio.</string>
+<string>Hazakura Amp uses access to system audio output to apply a local volume boost. It does not record, store, or transmit audio.</string>
 
 <!-- マイクは使わないため書かない
 <key>NSMicrophoneUsageDescription</key>
@@ -75,13 +75,13 @@ Hazakura Amp!は、Macの「**再生されている音**」にソフトウェア
 
 > v0.1ではSandboxを切る。**これは意図的な選択**。詳細は [RISKS §App Sandbox](./RISKS.md) 参照。
 
-> **「Hazakura Amp! uses access to system audio output to apply a local volume boost.」** という英文は、ユーザに「出力を使っている」「録音しない」を同時に伝える最短表現。和訳はアプリ内文言の節を参照。
+> **「Hazakura Amp uses access to system audio output to apply a local volume boost.」** という英文は、ユーザに「出力を使っている」「録音しない」を同時に伝える最短表現。和訳はアプリ内文言の節を参照。
 
 ### 関連するApple公式の指針
 
 - `NSAudioCaptureUsageDescription`: Core Audio Tap 等で **システム出力をキャプチャ** するアプリ向けに、macOS が説明する目的を要求する Info.plist キー
-- `NSMicrophoneUsageDescription`: **マイク入力** に使われる（Hazakura Amp! では無関係）
-- `com.apple.security.device.audio-input` entitlement: **内蔵マイク録音や Core Audio の入力アクセス** 用。**システム出力タップ** とは別物。Hazakura Amp! では有効にしない
+- `NSMicrophoneUsageDescription`: **マイク入力** に使われる（Hazakura Amp では無関係）
+- `com.apple.security.device.audio-input` entitlement: **内蔵マイク録音や Core Audio の入力アクセス** 用。**システム出力タップ** とは別物。Hazakura Amp では有効にしない
 
 ---
 
@@ -148,7 +148,7 @@ xcrun stapler staple build/HazakuraAmp.dmg
 
 ## Privacy Manifest (`PrivacyInfo.xcprivacy`)
 
-macOS 14以降、App Store 配布ではほぼ必須。Hazakura Amp!は**データ収集ゼロ**を宣言する。
+macOS 14以降、App Store 配布ではほぼ必須。Hazakura Ampは**データ収集ゼロ**を宣言する。
 
 ### 配置
 
@@ -198,7 +198,7 @@ hazakura-amp/
 ### 初回起動時のダイアログ（任意、v0.1は出さない・v0.2で検討）
 
 ```
-Hazakura Amp! は、Macで再生中の音声をメニューバーから持ち上げるためのアプリです。
+Hazakura Amp は、Macで再生中の音声をメニューバーから持ち上げるためのアプリです。
 
 このアプリは、Macで再生されている音声を一時的に処理し、音量を調整するために
 音声出力へのアクセスを使用します。録音や外部送信は一切行いません。
@@ -207,7 +207,7 @@ Hazakura Amp! は、Macで再生中の音声をメニューバーから持ち上
 ### ポップオーバー内の「？」/Aboutメニュー
 
 ```
-Hazakura Amp!
+Hazakura Amp
 
 外部スピーカーのつまみを触らず、Macの音量をソフトウェアから持ち上げます。
 
@@ -216,13 +216,13 @@ Hazakura Amp!
 - 録音・送信は一切行いません
 - ドライバをインストールしません
 
-Hazakura Amp!は小さな常駐型ユーティリティです。
+Hazakura Ampは小さな常駐型ユーティリティです。
 ```
 
 ### README / 製品ページ
 
 ```
-Hazakura Amp! は、Macで再生中の音声をメニューバーから一時的に大きくする
+Hazakura Amp は、Macで再生中の音声をメニューバーから一時的に大きくする
 ための軽量ユーティリティです。ドライバをインストールせず、録音や外部送信を
 行いません。マイクへのアクセスは要求しません。
 ```
@@ -241,7 +241,7 @@ Hazakura Amp! は、Macで再生中の音声をメニューバーから一時的
 
 - 公式サイトまたは GitHub Releases で DMG を配布
 - App Store には出さない方針（Sandbox 起因 + 規模の小ささ）
-- アンインストールは「`Applications` から `Hazakura Amp!.app` を削除」するだけのシンプル運用
+- アンインストールは「`Applications` から `Hazakura Amp.app` を削除」するだけのシンプル運用
 - アンインストール時に `~/Library/Application Support/HazakuraAmp/` 等を作成した場合はそれも削除する手順を README に記載
 
 ### v0.2以降で再評価

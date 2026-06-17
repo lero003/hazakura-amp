@@ -124,7 +124,7 @@ final class PoCAudioEngine: ObservableObject {
 
     // MARK: - Internals
 
-    private let log = Logger(subsystem: "dev.keisetsu.hazakura-volume-booster.poc", category: "PoCAudioEngine")
+    private let log = Logger(subsystem: "dev.keisetsu.hazakura-amp", category: "PoCAudioEngine")
     private let audioBackend: any AudioProcessingBackend
     private let backendFailureRelay: BackendFailureRelay
     private let outputDeviceMonitor = DefaultOutputDeviceMonitor()
@@ -384,7 +384,7 @@ final class PoCAudioEngine: ObservableObject {
             "[\(entry.level.label)] \(entry.message)"
         }.joined(separator: "\n")
         return """
-        Hazakura Amp! diagnostics
+        Hazakura Amp diagnostics
         appVersion: \(appVersion)
         build: \(build)
         signingKind: \(signingKind)

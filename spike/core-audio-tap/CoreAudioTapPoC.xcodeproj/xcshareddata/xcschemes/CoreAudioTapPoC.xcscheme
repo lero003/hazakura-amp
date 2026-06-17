@@ -16,7 +16,7 @@
             <BuildableReference
                BuildableIdentifier = "primary"
                BlueprintIdentifier = "AC15BDF8B3DCF02AA9A1C856"
-               BuildableName = "CoreAudioTapPoC.app"
+               BuildableName = "Hazakura Amp.app"
                BlueprintName = "CoreAudioTapPoC"
                ReferencedContainer = "container:CoreAudioTapPoC.xcodeproj">
             </BuildableReference>
@@ -47,7 +47,7 @@
          <BuildableReference
             BuildableIdentifier = "primary"
             BlueprintIdentifier = "AC15BDF8B3DCF02AA9A1C856"
-            BuildableName = "CoreAudioTapPoC.app"
+            BuildableName = "Hazakura Amp.app"
             BlueprintName = "CoreAudioTapPoC"
             ReferencedContainer = "container:CoreAudioTapPoC.xcodeproj">
          </BuildableReference>
@@ -83,7 +83,7 @@
          <BuildableReference
             BuildableIdentifier = "primary"
             BlueprintIdentifier = "AC15BDF8B3DCF02AA9A1C856"
-            BuildableName = "CoreAudioTapPoC.app"
+            BuildableName = "Hazakura Amp.app"
             BlueprintName = "CoreAudioTapPoC"
             ReferencedContainer = "container:CoreAudioTapPoC.xcodeproj">
          </BuildableReference>
@@ -102,7 +102,7 @@
          <BuildableReference
             BuildableIdentifier = "primary"
             BlueprintIdentifier = "AC15BDF8B3DCF02AA9A1C856"
-            BuildableName = "CoreAudioTapPoC.app"
+            BuildableName = "Hazakura Amp.app"
             BlueprintName = "CoreAudioTapPoC"
             ReferencedContainer = "container:CoreAudioTapPoC.xcodeproj">
          </BuildableReference>

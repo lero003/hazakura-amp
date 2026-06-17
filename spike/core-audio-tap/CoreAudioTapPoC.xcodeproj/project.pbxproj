@@ -46,7 +46,7 @@
 		1E9797A36309708715328917 /* CoreAudio.framework */ = {isa = PBXFileReference; lastKnownFileType = wrapper.framework; name = CoreAudio.framework; path = System/Library/Frameworks/CoreAudio.framework; sourceTree = SDKROOT; };
 		28178AF01151A50A07DD5392 /* CoreAudioTapPoC-Bridging-Header.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; path = "CoreAudioTapPoC-Bridging-Header.h"; sourceTree = "<group>"; };
 		2C3A88977E7A0230B9C2AC21 /* PoCAudioEngine.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PoCAudioEngine.swift; sourceTree = "<group>"; };
-		3F54D9D7367BABF812BBFB80 /* CoreAudioTapPoC.app */ = {isa = PBXFileReference; explicitFileType = wrapper.application; includeInIndex = 0; path = CoreAudioTapPoC.app; sourceTree = BUILT_PRODUCTS_DIR; };
+		3F54D9D7367BABF812BBFB80 /* Hazakura Amp.app */ = {isa = PBXFileReference; explicitFileType = wrapper.application; includeInIndex = 0; path = "Hazakura Amp.app"; sourceTree = BUILT_PRODUCTS_DIR; };
 		445FC41158747D8A4CEB1F39 /* AudioProcessingBackend.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AudioProcessingBackend.swift; sourceTree = "<group>"; };
 		48113286D3D81C85926E534B /* GainProcessor.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = GainProcessor.swift; sourceTree = "<group>"; };
 		486F0A1566A640CD2E6101AE /* Assets.xcassets */ = {isa = PBXFileReference; lastKnownFileType = folder.assetcatalog; path = Assets.xcassets; sourceTree = "<group>"; };
@@ -145,7 +145,7 @@
 		DEEA9891AE045C2F5096A00E /* Products */ = {
 			isa = PBXGroup;
 			children = (
-				3F54D9D7367BABF812BBFB80 /* CoreAudioTapPoC.app */,
+				3F54D9D7367BABF812BBFB80 /* Hazakura Amp.app */,
 				CFC83BDE9164A49918A01573 /* CoreAudioTapPoCTests.xctest */,
 			);
 			name = Products;
@@ -170,7 +170,7 @@
 			packageProductDependencies = (
 			);
 			productName = CoreAudioTapPoC;
-			productReference = 3F54D9D7367BABF812BBFB80 /* CoreAudioTapPoC.app */;
+			productReference = 3F54D9D7367BABF812BBFB80 /* Hazakura Amp.app */;
 			productType = "com.apple.product-type.application";
 		};
 		D042BE01F8C702AAC576F42E /* CoreAudioTapPoCTests */ = {
@@ -280,7 +280,7 @@
 			isa = XCBuildConfiguration;
 			buildSettings = {
 				ASSETCATALOG_COMPILER_APPICON_NAME = AppIcon;
-				CODE_SIGN_ENTITLEMENTS = CoreAudioTapPoC/Resources/CoreAudioTapPoC.entitlements;
+				CODE_SIGN_ENTITLEMENTS = CoreAudioTapPoC/Resources/HazakuraAmp.entitlements;
 				COMBINE_HIDPI_IMAGES = YES;
 				DEAD_CODE_STRIPPING = YES;
 				ENABLE_HARDENED_RUNTIME = YES;
@@ -292,9 +292,9 @@
 					"@executable_path/../Frameworks",
 				);
 				MACOSX_DEPLOYMENT_TARGET = 26.0;
-				PRODUCT_BUNDLE_IDENTIFIER = "dev.keisetsu.hazakura-volume-booster.poc";
+				PRODUCT_BUNDLE_IDENTIFIER = "dev.keisetsu.hazakura-amp";
 				PRODUCT_MODULE_NAME = CoreAudioTapPoC;
-				PRODUCT_NAME = "Hazakura Amp!";
+				PRODUCT_NAME = "Hazakura Amp";
 				SDKROOT = macosx;
 				SWIFT_OBJC_BRIDGING_HEADER = "CoreAudioTapPoC/CoreAudioTapPoC-Bridging-Header.h";
 				SWIFT_TREAT_WARNINGS_AS_ERRORS = NO;
@@ -376,9 +376,9 @@
 					"@loader_path/../Frameworks",
 				);
 				MACOSX_DEPLOYMENT_TARGET = 26.0;
-				PRODUCT_BUNDLE_IDENTIFIER = "dev.keisetsu.hazakura-volume-booster.poc.tests";
+				PRODUCT_BUNDLE_IDENTIFIER = "dev.keisetsu.hazakura-amp.tests";
 				SDKROOT = macosx;
-				TEST_HOST = "$(BUILT_PRODUCTS_DIR)/Hazakura Amp!.app/Contents/MacOS/Hazakura Amp!";
+				TEST_HOST = "$(BUILT_PRODUCTS_DIR)/Hazakura Amp.app/Contents/MacOS/Hazakura Amp";
 			};
 			name = Debug;
 		};
@@ -386,7 +386,7 @@
 			isa = XCBuildConfiguration;
 			buildSettings = {
 				ASSETCATALOG_COMPILER_APPICON_NAME = AppIcon;
-				CODE_SIGN_ENTITLEMENTS = CoreAudioTapPoC/Resources/CoreAudioTapPoC.entitlements;
+				CODE_SIGN_ENTITLEMENTS = CoreAudioTapPoC/Resources/HazakuraAmp.entitlements;
 				COMBINE_HIDPI_IMAGES = YES;
 				DEAD_CODE_STRIPPING = YES;
 				ENABLE_HARDENED_RUNTIME = YES;
@@ -398,9 +398,9 @@
 					"@executable_path/../Frameworks",
 				);
 				MACOSX_DEPLOYMENT_TARGET = 26.0;
-				PRODUCT_BUNDLE_IDENTIFIER = "dev.keisetsu.hazakura-volume-booster.poc";
+				PRODUCT_BUNDLE_IDENTIFIER = "dev.keisetsu.hazakura-amp";
 				PRODUCT_MODULE_NAME = CoreAudioTapPoC;
-				PRODUCT_NAME = "Hazakura Amp!";
+				PRODUCT_NAME = "Hazakura Amp";
 				SDKROOT = macosx;
 				SWIFT_OBJC_BRIDGING_HEADER = "CoreAudioTapPoC/CoreAudioTapPoC-Bridging-Header.h";
 				SWIFT_TREAT_WARNINGS_AS_ERRORS = NO;
@@ -419,9 +419,9 @@
 					"@loader_path/../Frameworks",
 				);
 				MACOSX_DEPLOYMENT_TARGET = 26.0;
-				PRODUCT_BUNDLE_IDENTIFIER = "dev.keisetsu.hazakura-volume-booster.poc.tests";
+				PRODUCT_BUNDLE_IDENTIFIER = "dev.keisetsu.hazakura-amp.tests";
 				SDKROOT = macosx;
-				TEST_HOST = "$(BUILT_PRODUCTS_DIR)/Hazakura Amp!.app/Contents/MacOS/Hazakura Amp!";
+				TEST_HOST = "$(BUILT_PRODUCTS_DIR)/Hazakura Amp.app/Contents/MacOS/Hazakura Amp";
 			};
 			name = Release;
 		};

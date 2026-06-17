@@ -90,6 +90,8 @@ final class GainProcessorTests: XCTestCase {
         let plist = try loadInfoPlist()
 
         let audioDescription = try XCTUnwrap(plist["NSAudioCaptureUsageDescription"] as? String)
+        XCTAssertTrue(audioDescription.contains("Hazakura Amp uses"))
+        XCTAssertFalse(audioDescription.contains("Hazakura Amp!"))
         XCTAssertTrue(audioDescription.contains("system audio output"))
         XCTAssertTrue(audioDescription.contains("does not record, store, or transmit audio"))
         XCTAssertNil(plist["NSMicrophoneUsageDescription"])
@@ -100,7 +102,32 @@ final class GainProcessorTests: XCTestCase {
 
         XCTAssertEqual(plist["CFBundleShortVersionString"] as? String, "0.2.0")
         XCTAssertEqual(plist["CFBundleVersion"] as? String, "2")
-        XCTAssertEqual(plist["CFBundleDisplayName"] as? String, "Hazakura Amp!")
+        XCTAssertEqual(plist["CFBundleDisplayName"] as? String, "Hazakura Amp")
+        XCTAssertFalse((plist["CFBundleDisplayName"] as? String)?.contains("!") ?? true)
+    }
+
+    func testXcodeBrandingUsesHazakuraAmpBundleIdentity() throws {
+        let projectDefinition = try String(
+            contentsOfFile: repositoryFile("spike/core-audio-tap/project.yml"),
+            encoding: .utf8
+        )
+        let scheme = try String(
+            contentsOfFile: repositoryFile("spike/core-audio-tap/CoreAudioTapPoC.xcodeproj/xcshareddata/xcschemes/CoreAudioTapPoC.xcscheme"),
+            encoding: .utf8
+        )
+        let projectFile = try String(
+            contentsOfFile: repositoryFile("spike/core-audio-tap/CoreAudioTapPoC.xcodeproj/project.pbxproj"),
+            encoding: .utf8
+        )
+
+        XCTAssertTrue(projectDefinition.contains("PRODUCT_BUNDLE_IDENTIFIER: dev.keisetsu.hazakura-amp"))
+        XCTAssertTrue(projectDefinition.contains("CODE_SIGN_ENTITLEMENTS: CoreAudioTapPoC/Resources/HazakuraAmp.entitlements"))
+        XCTAssertFalse(projectDefinition.contains("dev.keisetsu.hazakura-volume-booster"))
+        XCTAssertFalse(projectDefinition.contains("CoreAudioTapPoC.entitlements"))
+        XCTAssertTrue(projectFile.contains("path = \"Hazakura Amp.app\""))
+        XCTAssertFalse(projectFile.contains("path = CoreAudioTapPoC.app"))
+        XCTAssertTrue(scheme.contains("BuildableName = \"Hazakura Amp.app\""))
+        XCTAssertFalse(scheme.contains("BuildableName = \"CoreAudioTapPoC.app\""))
     }
 
     func testReleaseCandidateScriptUsesVersionedZipName() throws {
@@ -122,7 +149,7 @@ final class GainProcessorTests: XCTestCase {
         XCTAssertTrue(source.contains(".accessibilityLabel(\"Boost level\")"))
         XCTAssertTrue(source.contains(".accessibilityValue(gainAccessibilityValue)"))
         XCTAssertTrue(source.contains(".accessibilityLabel(startStopAccessibilityLabel)"))
-        XCTAssertTrue(source.contains(".accessibilityLabel(\"Quit Hazakura Amp!\")"))
+        XCTAssertTrue(source.contains(".accessibilityLabel(\"Quit Hazakura Amp\")"))
         XCTAssertTrue(source.contains(".accessibilityLabel(\"Developer diagnostics\")"))
         XCTAssertFalse(source.contains("100%に戻す"))
         XCTAssertFalse(source.contains("Toggle(\"ON\""))
@@ -350,11 +377,11 @@ final class GainProcessorTests: XCTestCase {
     func testSystemTapDescriptionMutesOtherProcessesButExcludesThisApp() {
         let description = SystemTap.makeTapDescription(
             deviceUID: "test-output-device",
-            excludingBundleID: "dev.keisetsu.hazakura-volume-booster.poc"
+            excludingBundleID: "dev.keisetsu.hazakura-amp"
         )
 
         XCTAssertEqual(description.deviceUID, "test-output-device")
-        XCTAssertEqual(description.bundleIDs, ["dev.keisetsu.hazakura-volume-booster.poc"])
+        XCTAssertEqual(description.bundleIDs, ["dev.keisetsu.hazakura-amp"])
         XCTAssertTrue(description.isExclusive)
         XCTAssertEqual(description.muteBehavior, .muted)
         XCTAssertTrue(description.isMixdown)
@@ -441,9 +468,10 @@ final class GainProcessorTests: XCTestCase {
         )
 
         XCTAssertTrue(source.contains("system_profiler SPAudioDataType"))
-        XCTAssertTrue(source.contains("hbb-poc"))
+        XCTAssertTrue(source.contains("hazakura-amp"))
         XCTAssertTrue(source.contains("pgrep"))
-        XCTAssertTrue(source.contains("CoreAudioTapPoC"))
+        XCTAssertTrue(source.contains("PROCESS_NAME=\"${PROCESS_NAME:-Hazakura Amp}\""))
+        XCTAssertFalse(source.contains("PROCESS_NAME=\"${PROCESS_NAME:-CoreAudioTapPoC}\""))
     }
 
     @MainActor

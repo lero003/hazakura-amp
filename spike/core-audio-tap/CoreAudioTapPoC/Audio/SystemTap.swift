@@ -31,7 +31,7 @@ import os.log
 /// SystemTap は PoCAudioEngine から単一スレッド（通常はバックグラウンド）で操作される。
 /// 内部状態は単一の呼び出し元からしか触られないため @unchecked Sendable とする。
 final class SystemTap: SystemTapControlling, @unchecked Sendable {
-    private let log = Logger(subsystem: "dev.keisetsu.hazakura-volume-booster.poc", category: "SystemTap")
+    private let log = Logger(subsystem: "dev.keisetsu.hazakura-amp", category: "SystemTap")
     private let diagnosticLog: DiagnosticLogStore
 
     private(set) var tapID: AudioObjectID = kAudioObjectUnknown
@@ -41,8 +41,8 @@ final class SystemTap: SystemTapControlling, @unchecked Sendable {
     private(set) var originalDefaultOutputID: AudioObjectID = kAudioObjectUnknown
 
     /// tap 名。実運用では Bundle Identifier を含めて他アプリと被らないようにする。
-    private let tapName = "dev.keisetsu.hazakura-volume-booster.poc.tap"
-    private let aggregateName = "dev.keisetsu.hazakura-volume-booster.poc.aggregate"
+    private let tapName = "dev.keisetsu.hazakura-amp.tap"
+    private let aggregateName = "dev.keisetsu.hazakura-amp.aggregate"
 
     // MARK: - Public
 
@@ -215,7 +215,7 @@ final class SystemTap: SystemTapControlling, @unchecked Sendable {
         // - default output を sub-device に含めることで、IO proc からの出力が
         //   実際のスピーカー／ヘッドホンへ届くようにする
         // - master sub-device は 0 (NSNumber) を指定。sub-device list の先頭要素を指す
-        let uid = "hbb-poc-\(UUID().uuidString)"
+        let uid = "hazakura-amp-\(UUID().uuidString)"
         let description: [String: Any] = [
             kAudioAggregateDeviceNameKey: aggregateName,
             kAudioAggregateDeviceUIDKey: uid,

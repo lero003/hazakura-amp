@@ -1,4 +1,4 @@
-# Hazakura Amp! PoC 作業記録 (JOURNAL)
+# Hazakura Amp PoC 作業記録 (JOURNAL)
 
 > 親: [`hazakura-amp/`](../)
 > 関連: [`README.md`](./README.md) / [`docs/TECH_SPIKE.md`](../../docs/TECH_SPIKE.md) / [`docs/ARCHITECTURE.md`](../../docs/ARCHITECTURE.md) / [`docs/RISKS.md`](../../docs/RISKS.md) / [`docs/PERMISSIONS.md`](../../docs/PERMISSIONS.md)
@@ -43,7 +43,7 @@
 | `spike/core-audio-tap/README.md` | ✅ v0.1 beta PoC の active 構成へ更新 |
 | `spike/core-audio-tap/project.yml` | ✅ |
 | `spike/core-audio-tap/CoreAudioTapPoC/Resources/Info.plist` | ✅ `NSAudioCaptureUsageDescription` 入り |
-| `spike/core-audio-tap/CoreAudioTapPoC/Resources/CoreAudioTapPoC.entitlements` | ✅ Hardened Runtime 必須項目のみ |
+| `spike/core-audio-tap/CoreAudioTapPoC/Resources/HazakuraAmp.entitlements` | ✅ Hardened Runtime 必須項目のみ |
 | `spike/core-audio-tap/CoreAudioTapPoC-Bridging-Header.h` | ✅ `AudioIOProc.h` インポート（残置、未使用） |
 
 ## PoC 試行の歴史（v0 → v2）
@@ -150,7 +150,7 @@ spike/core-audio-tap/
 │   │   └── PoCAudioEngine.swift         Swift 側オーケストレータ
 │   └── Resources/
 │       ├── Info.plist                   NSAudioCaptureUsageDescription 入り
-│       └── CoreAudioTapPoC.entitlements Hardened Runtime 必須項目のみ
+│       └── HazakuraAmp.entitlements Hardened Runtime 必須項目のみ
 └── CoreAudioTapPoCTests/
     └── GainProcessorTests.swift        ゲイン処理、診断、ring buffer、tap description など
 ```
@@ -235,7 +235,7 @@ ScreenCaptureKit から PCM を受け取り、**ring buffer に書き込む**。
 cd spike/core-audio-tap
 
 # 既存のプロセスを kill（過去のアタッチが残っている可能性があるため）
-pkill -f CoreAudioTapPoC.app 2>/dev/null
+pkill -f "Hazakura Amp.app" 2>/dev/null
 
 # xcodegen で再生成
 xcodegen generate
@@ -257,10 +257,10 @@ xcodebuild -project CoreAudioTapPoC.xcodeproj -scheme CoreAudioTapPoC -destinati
 
 ```bash
 # subsystem フィルタで永続ログ
-log show --predicate 'subsystem == "dev.keisetsu.hazakura-volume-booster.poc"' --last 5m --info
+log show --predicate 'subsystem == "dev.keisetsu.hazakura-amp"' --last 5m --info
 
 # ライブ監視（Start 押す前に走らせるとリアルタイムで流れる）
-log stream --predicate 'subsystem == "dev.keisetsu.hazakura-volume-booster.poc"' --level info
+log stream --predicate 'subsystem == "dev.keisetsu.hazakura-amp"' --level info
 ```
 
 ### 検証チェックリスト（`docs/TECH_SPIKE.md` の Done 条件）
@@ -346,7 +346,7 @@ log stream --predicate 'subsystem == "dev.keisetsu.hazakura-volume-booster.poc"'
   - `ON` 状態は start/stop と統合し、停止中は backend gain を neutral に戻す
 - **2026-06-17（shutdown verification slice）**:
   - `scripts/verify_shutdown_safety.sh` を追加
-  - 通常終了または強制終了後に `CoreAudioTapPoC` プロセスと `hbb-poc` audio residue が残っていないことを確認できるようにした
+  - 通常終了または強制終了後に `Hazakura Amp` プロセスと `hazakura-amp` audio residue が残っていないことを確認できるようにした
 - **2026-06-17（permission diagnostics slice）**:
   - 権限拒否時の表示に System Settings > Privacy & Security と Start retry の次アクションを含める
   - 診断コピーに `signingKind` と `manualStartRequired` を追加

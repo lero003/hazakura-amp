@@ -2,7 +2,7 @@
 
 > 関連: [企画書 §初期UI案 / §状態表示](../hazakura-amp企画書.md) / [ARCHITECTURE §UI Layer](./ARCHITECTURE.md) / [PERMISSIONS §アプリ内文言](./PERMISSIONS.md)
 
-Hazakura Amp! の UI は、**「ステータスメニューの右に 1 つだけ存在し、迷わず最小操作で完結する」**ことを最優先する。v0.2 候補では、通常時の操作を 0%〜400% Slider、開始/停止、終了、Dev 診断だけに絞る。100%復帰、0/100/200/400プリセット、ON/OFFトグルは UI から外し、Slider と start/stop に統合する。
+Hazakura Amp の UI は、**「ステータスメニューの右に 1 つだけ存在し、迷わず最小操作で完結する」**ことを最優先する。v0.2 候補では、通常時の操作を 0%〜400% Slider、開始/停止、終了、Dev 診断だけに絞る。100%復帰、0/100/200/400プリセット、ON/OFFトグルは UI から外し、Slider と start/stop に統合する。
 
 ## デザイン原則
 
@@ -19,14 +19,14 @@ Hazakura Amp! の UI は、**「ステータスメニューの右に 1 つだけ
 ```
 ┌─────────────────────────────────────────────────────────────┐
 │  ステータスバー（右上の常駐アイコン群）                        │
-│  …  Wi-Fi  Bluetooth  Battery  [☀ Hazakura Amp!]  Time      │
+│  …  Wi-Fi  Bluetooth  Battery  [☀ Hazakura Amp]  Time      │
 └─────────────────────────────────────────────────────────────┘
                           │ click
                           ▼
                   ┌──────────────────────┐
                   │   Popover (240pt幅)  │
                   │                      │
-                  │  Hazakura Amp!       │ ← ヘッダ
+                  │  Hazakura Amp       │ ← ヘッダ
                   │  ─────────────       │
                   │  Boost               │
                   │  [─────●──────] 180% │ ← Slider + 値
@@ -81,7 +81,7 @@ Hazakura Amp! の UI は、**「ステータスメニューの右に 1 つだけ
 
 ```
 ┌────────────────────────────┐
-│ Hazakura Amp!              │ ← Header（SF Pro 13pt Semibold）
+│ Hazakura Amp              │ ← Header（SF Pro 13pt Semibold）
 │                            │
 │ Boost                      │ ← Section title（11pt）
 │ ┌──────────────────────┐ 0%│
@@ -211,10 +211,10 @@ Hazakura Amp! の UI は、**「ステータスメニューの右に 1 つだけ
 
 ## 7. VoiceOver
 
-- ヘッダ: "Hazakura Amp!, menu bar utility"
+- ヘッダ: "Hazakura Amp, menu bar utility"
 - Slider: "Boost level, 180 percent, adjustable"
 - 開始/停止: "Start boost processing" / "Stop boost processing"
-- 終了: "Quit Hazakura Amp!, button"
+- 終了: "Quit Hazakura Amp, button"
 - エラーバナー: "Warning, system audio access is not allowed"
 
 rotor で見出し/ボタン/スライダーに飛べるようにする（SwiftUI 既定で概ね動くが、見出しを `AccessibilityHeading` で明示）。
@@ -226,12 +226,12 @@ rotor で見出し/ボタン/スライダーに飛べるようにする（SwiftU
 - v0.1 の **実装UI文字列は英語を正**とする。`Info.plist` の `NSAudioCaptureUsageDescription` 等も英語
 - 文字列は `Localizable.strings` / SwiftUI の `Text("...")` ではなく `String(localized:)` 系に逃がして**i18n前提で記述**（コードに直書きしない）
 - このドキュメント内の日本語UIテキストは **設計説明用の補足** に留め、**実装上の正本は英語** として扱う
-  - ポップオーバーヘッダ: "Hazakura Amp!"
+  - ポップオーバーヘッダ: "Hazakura Amp"
   - ボタンの実装値:
     - 開始/停止: `Start` / `Stop`（設計メモ: 日本語UI案 = 「開始」/「停止」）
     - 終了: `Quit`（設計メモ: 日本語UI案 = 「終了」）
   - エラーバナー: `System audio access is not allowed.`（設計メモ: 日本語UI案 = 「⚠️ システム音声へのアクセスが許可されていません」）
-  - 起動時バナー: `Hazakura Amp! will process system audio locally to apply a volume boost. Audio is not recorded, stored, or transmitted.`
+  - 起動時バナー: `Hazakura Amp will process system audio locally to apply a volume boost. Audio is not recorded, stored, or transmitted.`
 - v0.2 以降で日本語ローカライズを追加（まずは英/日の2言語）
 
 ---

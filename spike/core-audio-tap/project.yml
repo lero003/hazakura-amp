@@ -1,6 +1,6 @@
 name: CoreAudioTapPoC
 options:
-  bundleIdPrefix: dev.keisetsu.hazakura-volume-booster
+  bundleIdPrefix: dev.keisetsu.hazakura-amp
   deploymentTarget:
     macOS: "26.0"
   createIntermediateGroups: true
@@ -37,31 +37,31 @@ targets:
       - path: CoreAudioTapPoC
         excludes:
           - "Resources/Info.plist"
-          - "Resources/CoreAudioTapPoC.entitlements"
+          - "Resources/HazakuraAmp.entitlements"
     resources:
       - path: CoreAudioTapPoC/Resources/Info.plist
         buildPhase: none
     info:
       path: CoreAudioTapPoC/Resources/Info.plist
       properties:
-        CFBundleDisplayName: "Hazakura Amp!"
+        CFBundleDisplayName: "Hazakura Amp"
         LSMinimumSystemVersion: "26.0"
         LSUIElement: true
-        NSAudioCaptureUsageDescription: "Hazakura Amp! uses access to system audio output to apply a local volume boost. It does not record, store, or transmit audio."
-        NSHumanReadableCopyright: "Hazakura Amp! — Core Audio Tap verification"
+        NSAudioCaptureUsageDescription: "Hazakura Amp uses access to system audio output to apply a local volume boost. It does not record, store, or transmit audio."
+        NSHumanReadableCopyright: "Hazakura Amp — Core Audio Tap verification"
         CFBundleShortVersionString: "0.2.0"
         CFBundleVersion: "2"
         HazakuraSigningKind: "$(CODE_SIGN_IDENTITY)"
     entitlements:
-      path: CoreAudioTapPoC/Resources/CoreAudioTapPoC.entitlements
+      path: CoreAudioTapPoC/Resources/HazakuraAmp.entitlements
     settings:
       base:
-        PRODUCT_BUNDLE_IDENTIFIER: dev.keisetsu.hazakura-volume-booster.poc
-        PRODUCT_NAME: "Hazakura Amp!"
+        PRODUCT_BUNDLE_IDENTIFIER: dev.keisetsu.hazakura-amp
+        PRODUCT_NAME: "Hazakura Amp"
         PRODUCT_MODULE_NAME: CoreAudioTapPoC
         ASSETCATALOG_COMPILER_APPICON_NAME: AppIcon
         GENERATE_INFOPLIST_FILE: NO
-        CODE_SIGN_ENTITLEMENTS: CoreAudioTapPoC/Resources/CoreAudioTapPoC.entitlements
+        CODE_SIGN_ENTITLEMENTS: CoreAudioTapPoC/Resources/HazakuraAmp.entitlements
         ENABLE_HARDENED_RUNTIME: YES
         DEAD_CODE_STRIPPING: YES
         SWIFT_TREAT_WARNINGS_AS_ERRORS: NO
@@ -84,9 +84,9 @@ targets:
       - path: CoreAudioTapPoCTests
     settings:
       base:
-        PRODUCT_BUNDLE_IDENTIFIER: dev.keisetsu.hazakura-volume-booster.poc.tests
+        PRODUCT_BUNDLE_IDENTIFIER: dev.keisetsu.hazakura-amp.tests
         GENERATE_INFOPLIST_FILE: YES
-        TEST_HOST: "$(BUILT_PRODUCTS_DIR)/Hazakura Amp!.app/Contents/MacOS/Hazakura Amp!"
+        TEST_HOST: "$(BUILT_PRODUCTS_DIR)/Hazakura Amp.app/Contents/MacOS/Hazakura Amp"
         BUNDLE_LOADER: "$(TEST_HOST)"
     dependencies:
       - target: CoreAudioTapPoC
