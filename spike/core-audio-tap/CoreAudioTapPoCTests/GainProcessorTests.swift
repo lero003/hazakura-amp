@@ -603,6 +603,49 @@ final class GainProcessorTests: XCTestCase {
         XCTAssertEqual(backend.startCount, 0)
     }
 
+    func testRemoteControlClampsGainCommands() throws {
+        let low = HazakuraAmpRemoteCommand.setGain(-2.0)
+        let high = HazakuraAmpRemoteCommand.setGain(9.0)
+        let normal = HazakuraAmpRemoteCommand.setGain(2.2)
+
+        XCTAssertEqual(low.sanitizedGain, 0.0)
+        XCTAssertEqual(high.sanitizedGain, 4.0)
+        XCTAssertEqual(normal.sanitizedGain, 2.2, accuracy: 0.001)
+    }
+
+    func testRemoteControlCommandRoundTripsThroughJSON() throws {
+        let encoder = JSONEncoder()
+        let decoder = JSONDecoder()
+        encoder.dateEncodingStrategy = .iso8601
+        decoder.dateDecodingStrategy = .iso8601
+
+        let command = HazakuraAmpRemoteCommand(
+            id: UUID(uuidString: "00000000-0000-0000-0000-000000000123")!,
+            kind: .setGain,
+            gain: 1.75,
+            createdAt: Date(timeIntervalSince1970: 1_800_000_000)
+        )
+
+        let data = try encoder.encode(command)
+        let decoded = try decoder.decode(HazakuraAmpRemoteCommand.self, from: data)
+
+        XCTAssertEqual(decoded, command)
+    }
+
+    func testRemoteStateContainsOnlyExtensionSafeFields() throws {
+        let state = HazakuraAmpRemoteState(
+            configuredGain: 2.5,
+            isRunning: true,
+            statusText: "running",
+            lastError: nil,
+            updatedAt: Date(timeIntervalSince1970: 1_800_000_000)
+        )
+
+        XCTAssertEqual(state.displayPercent, 250)
+        XCTAssertEqual(state.configuredGain, 2.5, accuracy: 0.001)
+        XCTAssertTrue(state.isRunning)
+    }
+
     private func loadInfoPlist() throws -> [String: Any] {
         let path = repositoryFile("spike/core-audio-tap/CoreAudioTapPoC/Resources/Info.plist")
         return try XCTUnwrap(NSDictionary(contentsOfFile: path) as? [String: Any])
