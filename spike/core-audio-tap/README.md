@@ -143,7 +143,7 @@ open "build/Build/Products/Debug/Hazakura Amp.app"
 普段の開発と単体テストは `Debug` / `Apple Development` 署名を使う。GitHub Release 前の手元確認は `Release` / `Developer ID Application` 署名の `build/Build/Products/Release/Hazakura Amp.app` を使う。外部配布する場合は、この Release 候補に対して notarization / staple を別工程で通してから配布する。
 
 初回起動時に **`NSAudioCaptureUsageDescription` の OS ダイアログ**が出るので「許可」する。  
-以降はメニューバーにアイコンが表示される。アイコンは状態を表し、停止中は塗りなしの波・動作中は塗りありの波（200%超は波が1つ増える）で ON/OFF が一目でわかる。%の数値は表示せず、形だけで伝える。クリックしてポップオーバーを開き「開始」を押す。操作UIは 0%〜400% スライダー、開始/停止、終了、Dev 診断に絞っている。UIの表示文言は日本語が正（VoiceOver 用 accessibility ラベルは英語ベース）。Dev モードをONにすると キャプチャバッファ / レンダー呼び出し / 出力ゲイン / 利用可能フレーム / アンダーラン / ドロップフレーム / ヘルス / イベントログ を確認できる。ヘルスは OK=緑 / 注意=オレンジ / 警告=赤 で色分けする。「コピー」で app version / build / signing kind / status / manual-start-required / health / recent events を含む診断スナップショットをクリップボードへコピーできる。ポップオーバーはメニューバーアイコンが画面右端寄りのとき自動で左へ寄せて画面内に収まる（v0.3.1）。
+以降はメニューバーにアイコンが表示される。アイコンは状態を表し、停止中は塗りなしの波・動作中は塗りありの波（200%超は波が1つ増える）で ON/OFF が一目でわかる。ホバー toolTip で状態と%を確認できる。クリックしてポップオーバーを開き「開始」を押す。操作UIは 0%〜400% スライダー、開始/停止、終了、折りたたみ診断に絞っている。UIの表示文言は日本語が正（VoiceOver 用 accessibility ラベルは英語ベース）。診断を開くと キャプチャバッファ / レンダー呼び出し / 出力ゲイン / 利用可能フレーム / アンダーラン / ドロップフレーム / ヘルス / イベントログ を確認できる。ヘルスは OK=緑 / 注意=オレンジ / 警告=赤 で色分けする。「コピー」で app version / build / signing kind / status / manual-start-required / health / recent events を含む診断スナップショットをクリップボードへコピーできる。ポップオーバーはメニューバーアイコンが画面右端寄りのとき自動で左へ寄せて画面内に収まる。v0.4.0 ではプリセット・簡易EQ・ゲインランプ・デバイス再接続、YouTube remote の速度/字幕/終了時100%戻しを含む。
 
 Hazakura Amp はシステム音をローカル処理して音量を持ち上げる。録音・保存・外部送信はしない。マイク権限も要求しない。
 

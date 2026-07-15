@@ -4,9 +4,11 @@
   const storageDefaults = {
     hazakuraAmpCollapsed: false,
     hazakuraAmpRepeatEnabled: false,
-    hazakuraAmpPosition: null
+    hazakuraAmpPosition: null,
+    hazakuraAmpPlaybackRate: 1
   };
   const boostPresets = [100, 150, 200, 300, 400];
+  const playbackRates = [0.75, 1, 1.25, 1.5, 2];
   const staleStateThresholdMs = 5_000;
   const statePollIntervalMs = 3_000;
 
@@ -17,14 +19,19 @@
   let boostSafetyText;
   let statusText;
   let repeatButton;
+  let captionsButton;
   let collapseButton;
   let presetButtons = [];
+  let speedButtons = [];
   let repeatEnabled = false;
   let collapsed = false;
+  let playbackRate = 1;
   let savedPosition = null;
   let dragState = null;
   let lastUrl = location.href;
   let sendTimer;
+  let boundVideo = null;
+  let endedListener = null;
 
   function isWatchPage() {
     return location.hostname.endsWith("youtube.com") && location.pathname === "/watch";
@@ -109,6 +116,41 @@
     }
   }
 
+  function formatStatusLabel(state, isConnected) {
+    if (!isConnected) {
+      return "アプリ未接続";
+    }
+    if (state?.isRunning) {
+      return "動作中";
+    }
+
+    const raw = String(state?.statusText || "").trim().toLowerCase();
+    switch (raw) {
+      case "running":
+        return "動作中";
+      case "sleeping":
+        return "スリープ中";
+      case "waking":
+        return "復帰中";
+      case "reconnecting output":
+        return "再接続中";
+      case "manual start required":
+        return "開始が必要";
+      case "restart required":
+        return "再開が必要";
+      case "permission denied":
+        return "権限が必要";
+      case "error":
+        return "エラー";
+      case "stopped":
+      case "idle":
+      case "":
+        return "停止中";
+      default:
+        return "停止中";
+    }
+  }
+
   function setBoostPercent(percent) {
     const clamped = Math.max(0, Math.min(400, Number(percent) || 0));
     boostInput.value = String(clamped);
@@ -128,7 +170,7 @@
     }
     const isHighBoost = percent >= 300;
     root.classList.toggle("hazakura-amp-high-boost", isHighBoost);
-    boostSafetyText.textContent = isHighBoost ? "High boost may clip loud sources." : "";
+    boostSafetyText.textContent = isHighBoost ? "300%以上は音割れしやすいです" : "";
   }
 
   function stateUpdatedAtMs(state) {
@@ -149,7 +191,7 @@
     }
     root.classList.toggle("hazakura-amp-disconnected", !isConnected);
     if (!isConnected) {
-      setStatus(message || "App disconnected");
+      setStatus(message || "アプリ未接続");
     }
   }
 
@@ -161,11 +203,11 @@
       setBoostPercent(state.configuredGain * 100);
     }
     if (!isFreshState(state)) {
-      markConnection(false, "App disconnected");
+      markConnection(false, "アプリ未接続");
       return;
     }
     markConnection(true);
-    setStatus(state.statusText || (state.isRunning ? "running" : "idle"));
+    setStatus(formatStatusLabel(state, true));
   }
 
   function applyCollapsed() {
@@ -179,24 +221,105 @@
     });
   }
 
+  function currentVideo() {
+    return document.querySelector("video.html5-main-video") || document.querySelector("video");
+  }
+
   function applyRepeat() {
-    const video = document.querySelector("video");
+    const video = currentVideo();
     if (video) {
       video.loop = repeatEnabled;
     }
-    repeatButton.setAttribute("aria-pressed", String(repeatEnabled));
-    repeatButton.classList.toggle("is-on", repeatEnabled);
+    if (repeatButton) {
+      repeatButton.setAttribute("aria-pressed", String(repeatEnabled));
+      repeatButton.classList.toggle("is-on", repeatEnabled);
+    }
+    bindVideoLifecycle(video);
+  }
+
+  function applyPlaybackRate() {
+    const video = currentVideo();
+    if (video) {
+      video.playbackRate = playbackRate;
+    }
+    speedButtons.forEach((button) => {
+      const rate = Number(button.dataset.playbackRate);
+      const isActive = Math.abs(rate - playbackRate) < 0.001;
+      button.classList.toggle("is-active", isActive);
+      button.setAttribute("aria-pressed", String(isActive));
+    });
+    bindVideoLifecycle(video);
+  }
+
+  function setPlaybackRate(rate) {
+    const numeric = Number(rate);
+    if (!Number.isFinite(numeric)) {
+      return;
+    }
+    playbackRate = Math.max(0.75, Math.min(2, numeric));
+    storageSet({ hazakuraAmpPlaybackRate: playbackRate });
+    applyPlaybackRate();
+  }
+
+  function toggleCaptions() {
+    // Prefer the native YouTube CC control rather than inventing captions.
+    const selectors = [
+      "button.ytp-subtitles-button",
+      ".ytp-subtitles-button",
+      "button[aria-label*='字幕']",
+      "button[aria-label*='Subtitles']",
+      "button[aria-label*='Captions']",
+      "button[data-tooltip-target-id='ytp-subtitles-button']"
+    ];
+    for (const selector of selectors) {
+      const button = document.querySelector(selector);
+      if (button) {
+        button.click();
+        setStatus("字幕を切替");
+        return;
+      }
+    }
+    setStatus("字幕ボタンなし");
+  }
+
+  function onVideoEnded() {
+    // Return system boost to neutral when the current video ends.
+    // Skip when page-local repeat keeps the same video looping.
+    // Do not requestStart: ending a video must not launch the mute/capture path.
+    if (repeatEnabled) {
+      return;
+    }
+    sendGainPercentOnly(100);
+    setStatus("動画終了→100%");
+  }
+
+  function bindVideoLifecycle(video) {
+    if (boundVideo === video) {
+      return;
+    }
+    if (boundVideo && endedListener) {
+      boundVideo.removeEventListener("ended", endedListener);
+    }
+    boundVideo = video || null;
+    endedListener = null;
+    if (!boundVideo) {
+      return;
+    }
+    endedListener = onVideoEnded;
+    boundVideo.addEventListener("ended", endedListener);
+    boundVideo.playbackRate = playbackRate;
+    boundVideo.loop = repeatEnabled;
   }
 
   function sendCommand(command) {
     return runtimeSend(command).then((response) => {
       if (!response?.ok) {
-        markConnection(false, response?.error || "App disconnected");
+        markConnection(false, "アプリ未接続");
         return null;
       }
       return response.reply;
-    }).catch((error) => {
-      markConnection(false, error?.message || "App disconnected");
+    }).catch(() => {
+      markConnection(false, "アプリ未接続");
       return null;
     });
   }
@@ -217,6 +340,18 @@
         .then((state) => applyRemoteState(state))
         .then(() => requestState());
     }, 120);
+  }
+
+  // User-independent safety path: update gain only, never auto-start the pipeline.
+  function sendGainPercentOnly(percent) {
+    const clamped = setBoostPercent(percent);
+    const gain = clamped / 100;
+    clearTimeout(sendTimer);
+    sendTimer = setTimeout(() => {
+      sendCommand({ kind: "setGain", gain })
+        .then((state) => applyRemoteState(state))
+        .then(() => requestState());
+    }, 80);
   }
 
   function sendGainFromInput() {
@@ -336,12 +471,34 @@
     });
     presetRow.append(...presetButtons);
 
+    const speedRow = document.createElement("div");
+    speedRow.className = "hazakura-amp-speed-row";
+    const speedLabel = document.createElement("span");
+    speedLabel.className = "hazakura-amp-row-label";
+    speedLabel.textContent = "速度";
+    const speedButtonsWrap = document.createElement("div");
+    speedButtonsWrap.className = "hazakura-amp-speed-buttons";
+    speedButtons = playbackRates.map((rate) => {
+      const label = rate === 1 ? "1x" : `${rate}x`;
+      const button = makeButton(label, "hazakura-amp-speed-button");
+      button.dataset.playbackRate = String(rate);
+      button.setAttribute("aria-label", `Set playback speed to ${rate}`);
+      button.setAttribute("aria-pressed", "false");
+      button.addEventListener("click", () => setPlaybackRate(rate));
+      return button;
+    });
+    speedButtonsWrap.append(...speedButtons);
+    speedRow.append(speedLabel, speedButtonsWrap);
+
     boostSafetyText = document.createElement("div");
     boostSafetyText.className = "hazakura-amp-safety";
     boostSafetyText.setAttribute("aria-live", "polite");
 
     const actionRow = document.createElement("div");
     actionRow.className = "hazakura-amp-action-row";
+
+    const tools = document.createElement("div");
+    tools.className = "hazakura-amp-tools";
 
     repeatButton = makeButton("Repeat", "hazakura-amp-repeat-button");
     repeatButton.setAttribute("aria-pressed", "false");
@@ -351,12 +508,18 @@
       applyRepeat();
     });
 
+    captionsButton = makeButton("字幕", "hazakura-amp-captions-button");
+    captionsButton.setAttribute("aria-label", "Toggle YouTube captions");
+    captionsButton.addEventListener("click", toggleCaptions);
+
+    tools.append(repeatButton, captionsButton);
+
     statusText = document.createElement("span");
     statusText.className = "hazakura-amp-status";
-    statusText.textContent = "idle";
+    statusText.textContent = "停止中";
 
-    actionRow.append(repeatButton, statusText);
-    controls.append(boostRow, presetRow, boostSafetyText, actionRow);
+    actionRow.append(tools, statusText);
+    controls.append(boostRow, presetRow, speedRow, boostSafetyText, actionRow);
     root.append(header, controls);
     document.documentElement.append(root);
   }
@@ -375,7 +538,11 @@
       }
       applyCollapsed();
       applyRepeat();
+      applyPlaybackRate();
       requestState();
+    } else {
+      applyRepeat();
+      applyPlaybackRate();
     }
   }
 
@@ -387,6 +554,7 @@
     setTimeout(() => {
       ensureBar();
       applyRepeat();
+      applyPlaybackRate();
       requestState();
     }, 200);
   }
@@ -394,12 +562,17 @@
   storageGet(storageDefaults).then((values) => {
     collapsed = Boolean(values.hazakuraAmpCollapsed);
     repeatEnabled = Boolean(values.hazakuraAmpRepeatEnabled);
+    const storedRate = Number(values.hazakuraAmpPlaybackRate);
+    playbackRate = playbackRates.includes(storedRate) ? storedRate : 1;
     savedPosition = isPosition(values.hazakuraAmpPosition) ? values.hazakuraAmpPosition : null;
     ensureBar();
   });
 
   document.addEventListener("yt-navigate-finish", handleNavigation);
-  document.addEventListener("loadedmetadata", applyRepeat, true);
+  document.addEventListener("loadedmetadata", () => {
+    applyRepeat();
+    applyPlaybackRate();
+  }, true);
   window.addEventListener("resize", () => {
     if (isPosition(savedPosition)) {
       applyPosition(savedPosition, true);
@@ -408,6 +581,8 @@
   setInterval(handleNavigation, 1000);
   setInterval(() => {
     if (root && isWatchPage()) {
+      applyPlaybackRate();
+      applyRepeat();
       requestState();
     }
   }, statePollIntervalMs);

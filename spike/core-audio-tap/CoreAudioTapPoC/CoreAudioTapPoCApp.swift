@@ -191,6 +191,13 @@ final class RightClickableStatusButton: NSObject {
                 self?.updateStatusItemAppearance()
             }
             .store(in: &observers)
+
+        engine.$statusText
+            .removeDuplicates()
+            .sink { [weak self] _ in
+                self?.updateStatusItemAppearance()
+            }
+            .store(in: &observers)
     }
 
     /// 動作状態に応じてメニューバーのアイコンを切り替える。
@@ -198,11 +205,14 @@ final class RightClickableStatusButton: NSObject {
     /// %ラベルは文字数変動でアイコン位置がガタつくため廃止し、アイコンのみで表現する。
     private func updateStatusItemAppearance() {
         let button = statusItem.button
-        let symbolName = menuBarSymbolName(isRunning: engine.isRunning, gain: engine.configuredGain)
-        let accessibilityLabel = menuBarAccessibilityLabel(isRunning: engine.isRunning, gain: engine.configuredGain)
+        let isRunning = engine.isRunning
+        let gain = engine.configuredGain
+        let symbolName = menuBarSymbolName(isRunning: isRunning, gain: gain)
+        let accessibilityLabel = menuBarAccessibilityLabel(isRunning: isRunning, gain: gain)
         button?.image = NSImage(systemSymbolName: symbolName, accessibilityDescription: accessibilityLabel)
         button?.title = ""
         button?.imagePosition = .imageOnly
+        button?.toolTip = menuBarToolTip(isRunning: isRunning, gain: gain, statusText: engine.statusText)
     }
 
     private func menuBarSymbolName(isRunning: Bool, gain: Double) -> String {
@@ -215,6 +225,19 @@ final class RightClickableStatusButton: NSObject {
         guard isRunning else { return "Hazakura Amp, idle" }
         let percent = Int((gain * 100).rounded())
         return "Hazakura Amp, boosting at \(percent) percent"
+    }
+
+    private func menuBarToolTip(isRunning: Bool, gain: Double, statusText: String) -> String {
+        let presentation = BoostStatusPresentation.make(
+            statusText: statusText,
+            isRunning: isRunning,
+            lastError: nil
+        )
+        let percent = Int((gain * 100).rounded())
+        if isRunning {
+            return "Hazakura Amp — \(presentation.chipLabel) \(percent)%"
+        }
+        return "Hazakura Amp — \(presentation.chipLabel)"
     }
 
     @objc private func handleStatusButtonAction(_ sender: NSStatusBarButton) {
@@ -266,7 +289,7 @@ final class RightClickableStatusButton: NSObject {
 
     private func makeQuitMenu() -> NSMenu {
         let menu = NSMenu()
-        let quitItem = NSMenuItem(title: "終了", action: #selector(quitFromMenu), keyEquivalent: "q")
+        let quitItem = NSMenuItem(title: "Hazakura Amp を終了", action: #selector(quitFromMenu), keyEquivalent: "q")
         quitItem.target = self
         menu.addItem(quitItem)
         return menu

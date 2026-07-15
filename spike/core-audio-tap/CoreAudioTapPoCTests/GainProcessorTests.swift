@@ -45,8 +45,50 @@ final class GainProcessorTests: XCTestCase {
     func testLimitedGainSoftensPeaksInsteadOfHardClipping() {
         let boosted = GainProcessor.applyLimitedGain(to: 0.75, gain: 2.0)
 
-        XCTAssertLessThan(boosted, 1.0)
-        XCTAssertGreaterThan(boosted, 0.9)
+        XCTAssertLessThan(boosted, 0.98)
+        XCTAssertGreaterThan(boosted, 0.85)
+        XCTAssertLessThan(boosted, 1.5) // raw would be 1.5 without limiter
+    }
+
+    func testSoftLimiterKeepsSafeSamplesLinear() {
+        XCTAssertEqual(GainProcessor.softLimit(0.5), 0.5, accuracy: 0.0001)
+        XCTAssertEqual(GainProcessor.softLimit(-0.4), -0.4, accuracy: 0.0001)
+    }
+
+    func testBoostPresetsMatchRoadmapValues() {
+        XCTAssertEqual(BoostPreset.normal.linearGain, 1.0, accuracy: 0.001)
+        XCTAssertEqual(BoostPreset.video.linearGain, 1.6, accuracy: 0.001)
+        XCTAssertEqual(BoostPreset.lecture.linearGain, 2.2, accuracy: 0.001)
+        XCTAssertEqual(BoostPreset.max.linearGain, 3.0, accuracy: 0.001)
+        XCTAssertEqual(BoostPreset.matching(gain: 1.6), .video)
+    }
+
+    func testEqualizerSettingsClampOutOfRangeBands() {
+        let raw = EqualizerSettings(lowDB: -12, midDB: 20, highDB: .nan).sanitized
+        XCTAssertEqual(raw.lowDB, -6, accuracy: 0.001)
+        XCTAssertEqual(raw.midDB, 6, accuracy: 0.001)
+        XCTAssertEqual(raw.highDB, 0, accuracy: 0.001)
+    }
+
+    func testAudioBackendMeterRampsTowardTargetGain() {
+        let meter = AudioBackendMeter(rampSeconds: 0.05)
+        meter.setLinearGain(2.0)
+
+        // One 10ms quantum should move but not fully arrive.
+        let mid = meter.advanceOutputGain(frameCount: 480, sampleRate: 48_000)
+        XCTAssertGreaterThan(mid, 0.0)
+        XCTAssertLessThan(mid, 2.0)
+
+        // A full 50ms quantum should land on target.
+        let settled = meter.advanceOutputGain(frameCount: 2_400, sampleRate: 48_000)
+        XCTAssertEqual(settled, 2.0, accuracy: 0.01)
+    }
+
+    func testAudioBackendMeterSnapForcesImmediateGain() {
+        let meter = AudioBackendMeter(rampSeconds: 0.05)
+        meter.setLinearGain(3.0)
+        meter.snapLinearGain(1.0)
+        XCTAssertEqual(meter.outputGain, 1.0, accuracy: 0.0001)
     }
 
     func testAudioPipelineLatencyBudgetKeepsTypicalScreenCaptureAudioChunk() {
@@ -97,13 +139,14 @@ final class GainProcessorTests: XCTestCase {
         XCTAssertNil(plist["NSMicrophoneUsageDescription"])
     }
 
-    func testInfoPlistUsesV031ReleaseVersion() throws {
+    func testInfoPlistUsesV040ReleaseVersion() throws {
         let plist = try loadInfoPlist()
 
-        XCTAssertEqual(plist["CFBundleShortVersionString"] as? String, "0.3.1")
-        XCTAssertEqual(plist["CFBundleVersion"] as? String, "4")
+        XCTAssertEqual(plist["CFBundleShortVersionString"] as? String, "0.4.0")
+        XCTAssertEqual(plist["CFBundleVersion"] as? String, "6")
         XCTAssertEqual(plist["CFBundleDisplayName"] as? String, "Hazakura Amp")
         XCTAssertFalse((plist["CFBundleDisplayName"] as? String)?.contains("!") ?? true)
+        XCTAssertEqual(plist["NSHumanReadableCopyright"] as? String, "Copyright © Hazakura Amp")
     }
 
     func testXcodeBrandingUsesHazakuraAmpBundleIdentity() throws {
@@ -151,13 +194,52 @@ final class GainProcessorTests: XCTestCase {
         XCTAssertTrue(source.contains(".accessibilityLabel(startStopAccessibilityLabel)"))
         XCTAssertTrue(source.contains(".accessibilityLabel(\"Quit Hazakura Amp\")"))
         XCTAssertTrue(source.contains(".accessibilityLabel(\"Developer diagnostics\")"))
+        XCTAssertTrue(source.contains("DisclosureGroup(isExpanded: $isShowingDevMode)"))
+        XCTAssertTrue(source.contains("StatusIndicator(presentation: presentation)"))
+        XCTAssertTrue(source.contains("chipLabel"))
+        XCTAssertTrue(source.contains("300% 以上では音源によって割れやすくなります。"))
+        XCTAssertTrue(source.contains("BoostPreset.allCases"))
+        XCTAssertTrue(source.contains("EqualizerSection"))
+        XCTAssertTrue(source.contains("engine.applyPreset"))
         XCTAssertFalse(source.contains("100%に戻す"))
         XCTAssertFalse(source.contains("Toggle(\"ON\""))
-        XCTAssertFalse(source.contains("presetButton("))
+        XCTAssertFalse(source.contains("Toggle(\"Dev\""))
         XCTAssertFalse(source.contains("Button(\"0%\""))
-        XCTAssertFalse(source.contains("Button(\"100%\""))
-        XCTAssertFalse(source.contains("Button(\"200%\""))
         XCTAssertFalse(source.contains("Button(\"400%\""))
+        XCTAssertFalse(source.contains("⚠️"))
+    }
+
+    func testYouTubeRemoteUsesProductFacingStatusLabels() throws {
+        let source = try String(
+            contentsOfFile: repositoryFile("spike/core-audio-tap/YouTubeRemoteExtension/content.js"),
+            encoding: .utf8
+        )
+
+        XCTAssertTrue(source.contains("function formatStatusLabel"))
+        XCTAssertTrue(source.contains("動作中"))
+        XCTAssertTrue(source.contains("停止中"))
+        XCTAssertTrue(source.contains("アプリ未接続"))
+        XCTAssertTrue(source.contains("300%以上は音割れしやすいです"))
+        XCTAssertFalse(source.contains("App disconnected"))
+        XCTAssertFalse(source.contains("High boost may clip loud sources."))
+    }
+
+    func testStatusPresentationIncludesChipLabels() {
+        let running = BoostStatusPresentation.make(
+            statusText: "running",
+            isRunning: true,
+            lastError: nil
+        )
+        XCTAssertEqual(running.chipLabel, "動作中")
+        XCTAssertEqual(running.severity, .normal)
+
+        let permission = BoostStatusPresentation.make(
+            statusText: "permission denied",
+            isRunning: false,
+            lastError: nil
+        )
+        XCTAssertEqual(permission.chipLabel, "権限が必要")
+        XCTAssertEqual(permission.severity, .warning)
     }
 
     func testAppCanOpenAndInspectSafariExtensionSettings() throws {
@@ -336,10 +418,52 @@ final class GainProcessorTests: XCTestCase {
     func testAudioBackendMeterUsesConfiguredGainAfterOriginalOutputIsMuted() {
         let meter = AudioBackendMeter()
 
-        meter.setLinearGain(4.0)
+        meter.snapLinearGain(4.0)
 
         XCTAssertEqual(meter.outputGain, 4.0, accuracy: 0.001)
         XCTAssertEqual(meter.diagnostics.lastObservedGain, 4.0, accuracy: 0.001)
+    }
+
+    @MainActor
+    func testApplyPresetUpdatesConfiguredGain() {
+        let engine = PoCAudioEngine(
+            audioBackend: FakeAudioProcessingBackend(),
+            monitorsOutputDeviceChanges: false
+        )
+        engine.applyPreset(.lecture)
+        XCTAssertEqual(engine.configuredGain, 2.2, accuracy: 0.001)
+    }
+
+    @MainActor
+    func testEqualizerChangesAreForwardedToBackend() throws {
+        let backend = FakeAudioProcessingBackend()
+        let engine = PoCAudioEngine(audioBackend: backend, monitorsOutputDeviceChanges: false)
+        engine.equalizer = EqualizerSettings(lowDB: 3, midDB: -1.5, highDB: 2)
+        let applied = try XCTUnwrap(backend.appliedEqualizers.last)
+        XCTAssertEqual(applied.lowDB, 3, accuracy: 0.001)
+        XCTAssertEqual(applied.midDB, -1.5, accuracy: 0.001)
+        XCTAssertEqual(applied.highDB, 2, accuracy: 0.001)
+    }
+
+    @MainActor
+    func testOutputDeviceChangeAttemptsAutomaticReconnect() async throws {
+        let backend = FakeAudioProcessingBackend()
+        let engine = PoCAudioEngine(
+            audioBackend: backend,
+            monitorsOutputDeviceChanges: false,
+            deviceReconnectRetryDelaysNanoseconds: [0, 0]
+        )
+        engine.configuredGain = 2.0
+        await engine.startAsync()
+        XCTAssertEqual(backend.startCount, 1)
+
+        // Simulate device-change recovery path.
+        engine.handleRecoverableBackendFailure("Default output device changed")
+        try await Task.sleep(nanoseconds: 80_000_000)
+
+        XCTAssertGreaterThanOrEqual(backend.startCount, 2)
+        XCTAssertTrue(engine.isRunning)
+        XCTAssertEqual(engine.configuredGain, 2.0, accuracy: 0.001)
     }
 
     func testAudioBackendMeterReportsBufferHealthDiagnostics() {
@@ -550,19 +674,30 @@ final class GainProcessorTests: XCTestCase {
         XCTAssertTrue(source.contains("clampPosition"))
         XCTAssertTrue(source.contains("setPointerCapture"))
         XCTAssertTrue(source.contains("boostPresets = [100, 150, 200, 300, 400]"))
+        XCTAssertTrue(source.contains("playbackRates = [0.75, 1, 1.25, 1.5, 2]"))
         XCTAssertTrue(source.contains("staleStateThresholdMs"))
-        XCTAssertTrue(source.contains("App disconnected"))
-        XCTAssertTrue(source.contains("High boost may clip loud sources."))
+        XCTAssertTrue(source.contains("アプリ未接続"))
+        XCTAssertTrue(source.contains("300%以上は音割れしやすいです"))
+        XCTAssertTrue(source.contains("formatStatusLabel"))
         XCTAssertTrue(source.contains("video.loop = repeatEnabled"))
+        XCTAssertTrue(source.contains("playbackRate"))
+        XCTAssertTrue(source.contains("toggleCaptions"))
+        XCTAssertTrue(source.contains("ytp-subtitles-button"))
+        XCTAssertTrue(source.contains("onVideoEnded"))
+        XCTAssertTrue(source.contains("sendGainPercentOnly(100)"))
+        XCTAssertTrue(source.contains("function sendGainPercentOnly"))
         XCTAssertTrue(source.contains("setGain"))
         XCTAssertTrue(source.contains("requestState"))
         XCTAssertFalse(source.contains("AudioContext"))
         XCTAssertFalse(source.contains("webkitAudioContext"))
         XCTAssertFalse(source.contains("download"))
+        // Video-end safety: must not auto-start the capture/mute pipeline.
+        XCTAssertFalse(source.contains("onVideoEnded() {\n    sendGainPercent(100)"))
         XCTAssertTrue(css.contains(".hazakura-amp-floating-bar"))
         XCTAssertTrue(css.contains("top: 84px"))
         XCTAssertTrue(css.contains(".hazakura-amp-floating-bar.hazakura-amp-dragging"))
         XCTAssertTrue(css.contains(".hazakura-amp-preset-row"))
+        XCTAssertTrue(css.contains(".hazakura-amp-speed-row"))
         XCTAssertTrue(css.contains(".hazakura-amp-floating-bar.hazakura-amp-high-boost"))
         XCTAssertTrue(css.contains(".hazakura-amp-floating-bar.hazakura-amp-disconnected"))
         XCTAssertTrue(css.contains("@media (max-width: 640px)"))
@@ -912,6 +1047,7 @@ private final class FakeAudioProcessingBackend: AudioProcessingBackend, @uncheck
     private(set) var startCount = 0
     private(set) var stopCount = 0
     private(set) var appliedGains: [Float] = []
+    private(set) var appliedEqualizers: [EqualizerSettings] = []
 
     var diagnostics = AudioBackendDiagnostics()
     var queuedStartErrors: [Error] = []
@@ -931,6 +1067,14 @@ private final class FakeAudioProcessingBackend: AudioProcessingBackend, @uncheck
 
     func setLinearGain(_ linearGain: Float) {
         appliedGains.append(linearGain)
+    }
+
+    func snapLinearGain(_ linearGain: Float) {
+        appliedGains.append(linearGain)
+    }
+
+    func setEqualizer(_ settings: EqualizerSettings) {
+        appliedEqualizers.append(settings.sanitized)
     }
 
     static func makeError(_ message: String) -> NSError {

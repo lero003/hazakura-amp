@@ -105,6 +105,16 @@ final class PoCAudioEngine: ObservableObject {
     @Published private(set) var isRunning: Bool = false
     @Published private(set) var lastError: String?
     @Published private(set) var statusText: String = "idle"
+    @Published var equalizer: EqualizerSettings = .neutral {
+        didSet {
+            let sanitized = equalizer.sanitized
+            guard sanitized == equalizer else {
+                equalizer = sanitized
+                return
+            }
+            audioBackend.setEqualizer(sanitized)
+        }
+    }
 
     // 診断用: capture/render backend の状態
     @Published private(set) var captureBufferCount: UInt64 = 0
@@ -125,9 +135,11 @@ final class PoCAudioEngine: ObservableObject {
     private let monitorsOutputDeviceChanges: Bool
     private let wakeRestoreDelayNanoseconds: UInt64
     private let wakeRestoreRetryDelaysNanoseconds: [UInt64]
+    private let deviceReconnectRetryDelaysNanoseconds: [UInt64]
     private var diagnosticTimer: Timer?
     private var startTask: Task<Void, Never>?
     private var wakeRestoreTask: Task<Void, Never>?
+    private var deviceReconnectTask: Task<Void, Never>?
     private var hasReportedMissingCaptureBuffers = false
     private var hasReportedMissingRenderCalls = false
     private var sleepSnapshot: (configuredGain: Double, wasRunning: Bool)?
@@ -137,7 +149,8 @@ final class PoCAudioEngine: ObservableObject {
         audioBackend: (any AudioProcessingBackend)? = nil,
         monitorsOutputDeviceChanges: Bool = true,
         wakeRestoreDelayNanoseconds: UInt64 = 1_000_000_000,
-        wakeRestoreRetryDelaysNanoseconds: [UInt64] = [2_000_000_000, 5_000_000_000]
+        wakeRestoreRetryDelaysNanoseconds: [UInt64] = [2_000_000_000, 5_000_000_000],
+        deviceReconnectRetryDelaysNanoseconds: [UInt64] = [500_000_000, 1_500_000_000, 3_000_000_000]
     ) {
         let relay = BackendFailureRelay()
         self.diagnosticLog = diagnosticLog
@@ -145,6 +158,7 @@ final class PoCAudioEngine: ObservableObject {
         self.monitorsOutputDeviceChanges = monitorsOutputDeviceChanges
         self.wakeRestoreDelayNanoseconds = wakeRestoreDelayNanoseconds
         self.wakeRestoreRetryDelaysNanoseconds = wakeRestoreRetryDelaysNanoseconds
+        self.deviceReconnectRetryDelaysNanoseconds = deviceReconnectRetryDelaysNanoseconds
         self.audioBackend = audioBackend ?? BoostAudioPipeline(
             diagnosticLog: diagnosticLog,
             onBackendFailure: { [relay] message in
@@ -153,6 +167,7 @@ final class PoCAudioEngine: ObservableObject {
         )
         diagnosticLog.record(.info, "Engine initialized")
         relay.engine = self
+        self.audioBackend.setEqualizer(equalizer)
     }
 
     /// 現在の effective gain。UI 表示・IO proc 適用値はこれ。
@@ -170,6 +185,8 @@ final class PoCAudioEngine: ObservableObject {
     func start() {
         wakeRestoreTask?.cancel()
         wakeRestoreTask = nil
+        deviceReconnectTask?.cancel()
+        deviceReconnectTask = nil
         sleepSnapshot = nil
         startTask?.cancel()
         startTask = Task { [weak self] in
@@ -189,6 +206,7 @@ final class PoCAudioEngine: ObservableObject {
             try await audioBackend.start()
 
             isRunning = true
+            audioBackend.setEqualizer(equalizer)
             applyEffectiveGain()
 
             lastError = nil
@@ -224,12 +242,14 @@ final class PoCAudioEngine: ObservableObject {
         startTask = nil
         wakeRestoreTask?.cancel()
         wakeRestoreTask = nil
+        deviceReconnectTask?.cancel()
+        deviceReconnectTask = nil
         sleepSnapshot = nil
         diagnosticTimer?.invalidate()
         diagnosticTimer = nil
         outputDeviceMonitor.stop()
 
-        audioBackend.setLinearGain(1.0)
+        audioBackend.snapLinearGain(1.0)
         audioBackend.stop()
 
         isRunning = false
@@ -253,11 +273,13 @@ final class PoCAudioEngine: ObservableObject {
         startTask = nil
         wakeRestoreTask?.cancel()
         wakeRestoreTask = nil
+        deviceReconnectTask?.cancel()
+        deviceReconnectTask = nil
         sleepSnapshot = nil
         diagnosticTimer?.invalidate()
         diagnosticTimer = nil
         outputDeviceMonitor.stop()
-        audioBackend.setLinearGain(1.0)
+        audioBackend.snapLinearGain(1.0)
         audioBackend.stop()
         isRunning = false
         statusText = PoCAudioEngineStatus.stopped.rawValue
@@ -276,15 +298,28 @@ final class PoCAudioEngine: ObservableObject {
         startTask = nil
         wakeRestoreTask?.cancel()
         wakeRestoreTask = nil
+        deviceReconnectTask?.cancel()
+        deviceReconnectTask = nil
         diagnosticTimer?.invalidate()
         diagnosticTimer = nil
         outputDeviceMonitor.stop()
-        audioBackend.setLinearGain(1.0)
+        audioBackend.snapLinearGain(1.0)
         audioBackend.stop()
         isRunning = false
         resetDiagnostics()
         statusText = PoCAudioEngineStatus.sleeping.rawValue
         diagnosticLog.record(.info, "Sleep requested; output gain forced to 100% and audio pipeline stopped")
+    }
+
+    func applyPreset(_ preset: BoostPreset) {
+        configuredGain = preset.linearGain
+        diagnosticLog.record(.info, "Applied preset \(preset.rawValue) (\(preset.percentLabel))")
+    }
+
+    /// Called by YouTube remote when the current video ends: return boost to neutral safely.
+    func resetBoostToNeutral() {
+        configuredGain = 1.0
+        diagnosticLog.record(.info, "Boost reset to 100% (video ended or remote request)")
     }
 
     func restoreAfterWake() {
@@ -329,6 +364,7 @@ final class PoCAudioEngine: ObservableObject {
                 try await audioBackend.start()
 
                 isRunning = true
+                audioBackend.setEqualizer(equalizer)
                 applyEffectiveGain()
 
                 lastError = nil
@@ -387,6 +423,9 @@ final class PoCAudioEngine: ObservableObject {
         running: \(isRunning)
         configuredGain: \(String(format: "%.2f", configuredGain))x (\(percent)%)
         effectiveGain: \(String(format: "%.2f", effectiveGain))x
+        equalizerLowDB: \(String(format: "%.1f", equalizer.lowDB))
+        equalizerMidDB: \(String(format: "%.1f", equalizer.midDB))
+        equalizerHighDB: \(String(format: "%.1f", equalizer.highDB))
         captureBufferCount: \(diagnostics.captureBufferCount)
         renderCallCount: \(diagnostics.renderCallCount)
         outputGain: \(String(format: "%.2f", diagnostics.lastObservedGain))x
@@ -450,7 +489,7 @@ final class PoCAudioEngine: ObservableObject {
         diagnosticTimer?.invalidate()
         diagnosticTimer = nil
         outputDeviceMonitor.stop()
-        audioBackend.setLinearGain(1.0)
+        audioBackend.snapLinearGain(1.0)
         audioBackend.stop()
         isRunning = false
         resetDiagnostics()
@@ -512,12 +551,76 @@ final class PoCAudioEngine: ObservableObject {
         do {
             try outputDeviceMonitor.start { [weak self] in
                 Task { @MainActor in
-                    self?.handleRecoverableBackendFailure("Default output device changed; restart boost to continue safely")
+                    self?.handleDefaultOutputDeviceChanged()
                 }
             }
             diagnosticLog.record(.info, "Default output device monitor started")
         } catch {
             diagnosticLog.record(.warning, "Default output device monitor unavailable: \(error.localizedDescription)")
+        }
+    }
+
+    private func handleDefaultOutputDeviceChanged() {
+        guard isRunning else { return }
+        diagnosticLog.record(.warning, "Default output device changed; attempting automatic reconnect")
+        deviceReconnectTask?.cancel()
+        deviceReconnectTask = Task { [weak self] in
+            await self?.reconnectAfterOutputDeviceChange()
+        }
+    }
+
+    private func reconnectAfterOutputDeviceChange() async {
+        let savedGain = configuredGain
+        startTask?.cancel()
+        startTask = nil
+        wakeRestoreTask?.cancel()
+        wakeRestoreTask = nil
+        diagnosticTimer?.invalidate()
+        diagnosticTimer = nil
+        outputDeviceMonitor.stop()
+        audioBackend.snapLinearGain(1.0)
+        audioBackend.stop()
+        isRunning = false
+        resetDiagnostics()
+        statusText = "reconnecting output"
+        lastError = nil
+        configuredGain = savedGain
+
+        var attemptIndex = 0
+        while true {
+            do {
+                diagnosticLog.record(.info, "Output device reconnect attempt \(attemptIndex + 1)")
+                try await audioBackend.start()
+                isRunning = true
+                audioBackend.setEqualizer(equalizer)
+                applyEffectiveGain()
+                statusText = PoCAudioEngineStatus.running.rawValue
+                startDiagnosticTimer()
+                startOutputDeviceMonitor()
+                diagnosticLog.record(.info, "Output device reconnect finished")
+                return
+            } catch {
+                let errMsg = error.localizedDescription
+                diagnosticLog.record(.warning, "Output device reconnect attempt \(attemptIndex + 1) failed: \(errMsg)")
+                cleanupAfterFailure()
+
+                guard attemptIndex < deviceReconnectRetryDelaysNanoseconds.count else {
+                    statusText = PoCAudioEngineStatus.restartRequired.rawValue
+                    lastError = "Default output device changed"
+                    diagnosticLog.record(.warning, "Output device reconnect paused; manual Start required")
+                    return
+                }
+
+                let delay = deviceReconnectRetryDelaysNanoseconds[attemptIndex]
+                attemptIndex += 1
+                if delay > 0 {
+                    do {
+                        try await Task.sleep(nanoseconds: delay)
+                    } catch {
+                        return
+                    }
+                }
+            }
         }
     }
 
@@ -545,15 +648,21 @@ final class PoCAudioEngine: ObservableObject {
         hasReportedMissingRenderCalls = false
     }
 
-    fileprivate func handleRecoverableBackendFailure(_ message: String) {
+    func handleRecoverableBackendFailure(_ message: String) {
         guard isRunning else { return }
+        if message.localizedCaseInsensitiveContains("default output device changed") {
+            handleDefaultOutputDeviceChanged()
+            return
+        }
         log.error("Recoverable backend failure: \(message, privacy: .public)")
         diagnosticLog.record(.error, message)
         diagnosticLog.record(.warning, "Stopping engine safely; restart required")
+        deviceReconnectTask?.cancel()
+        deviceReconnectTask = nil
         diagnosticTimer?.invalidate()
         diagnosticTimer = nil
         outputDeviceMonitor.stop()
-        audioBackend.setLinearGain(1.0)
+        audioBackend.snapLinearGain(1.0)
         audioBackend.stop()
         isRunning = false
         statusText = PoCAudioEngineStatus.restartRequired.rawValue

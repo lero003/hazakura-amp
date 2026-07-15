@@ -88,26 +88,49 @@ protocol AudioProcessingBackend: AnyObject, Sendable {
 
     func start() async throws
     func stop()
+    /// Target linear gain. Implementations should ramp toward the value when audible.
     func setLinearGain(_ linearGain: Float)
+    /// Immediately force gain (used for stop/shutdown safety paths).
+    func snapLinearGain(_ linearGain: Float)
+    func setEqualizer(_ settings: EqualizerSettings)
+}
+
+extension AudioProcessingBackend {
+    func snapLinearGain(_ linearGain: Float) {
+        setLinearGain(linearGain)
+    }
+
+    func setEqualizer(_ settings: EqualizerSettings) {
+        // Optional for backends that only process gain.
+        _ = settings
+    }
 }
 
 final class AudioBackendMeter: @unchecked Sendable {
+    /// ~50 ms gain ramp at typical render rates, matching docs/RISKS.md guidance.
+    static let defaultRampSeconds: Float = 0.05
+
     private let lock = NSLock()
+    private let rampSeconds: Float
     private var captureBuffers: UInt64 = 0
     private var renderCalls: UInt64 = 0
-    private var currentLinearGain: Float = 1.0
-    private var currentOutputGain: Float = 0.0
+    private var targetLinearGain: Float = 1.0
+    private var smoothedOutputGain: Float = 0.0
     private var currentAvailableFrames: Int = 0
     private var underruns: UInt64 = 0
     private var droppedFrames: UInt64 = 0
     private var latestBufferFrames: Int = 0
 
+    init(rampSeconds: Float = AudioBackendMeter.defaultRampSeconds) {
+        self.rampSeconds = max(0.001, rampSeconds)
+    }
+
     var linearGain: Float {
-        lock.withLock { currentLinearGain }
+        lock.withLock { targetLinearGain }
     }
 
     var outputGain: Float {
-        lock.withLock { currentOutputGain }
+        lock.withLock { smoothedOutputGain }
     }
 
     var diagnostics: AudioBackendDiagnostics {
@@ -115,7 +138,7 @@ final class AudioBackendMeter: @unchecked Sendable {
             AudioBackendDiagnostics(
                 captureBufferCount: captureBuffers,
                 renderCallCount: renderCalls,
-                lastObservedGain: currentOutputGain,
+                lastObservedGain: smoothedOutputGain,
                 availableFrames: currentAvailableFrames,
                 underrunCount: underruns,
                 droppedFrameCount: droppedFrames,
@@ -135,10 +158,37 @@ final class AudioBackendMeter: @unchecked Sendable {
         }
     }
 
+    /// Set the target gain; render path ramps toward it.
     func setLinearGain(_ gain: Float) {
         lock.withLock {
-            currentLinearGain = gain
-            currentOutputGain = max(0.0, gain)
+            targetLinearGain = max(0.0, gain)
+        }
+    }
+
+    /// Instantly force gain (stop / permission failure / termination).
+    func snapLinearGain(_ gain: Float) {
+        lock.withLock {
+            let safe = max(0.0, gain)
+            targetLinearGain = safe
+            smoothedOutputGain = safe
+        }
+    }
+
+    /// Advance the smoothed gain for the upcoming render quantum and return it.
+    func advanceOutputGain(frameCount: Int, sampleRate: Double = 48_000) -> Float {
+        lock.withLock {
+            let frames = max(0, frameCount)
+            guard frames > 0 else { return smoothedOutputGain }
+
+            let rampFrames = max(1.0, Float(sampleRate) * rampSeconds)
+            let alpha = min(1.0, Float(frames) / rampFrames)
+            smoothedOutputGain += (targetLinearGain - smoothedOutputGain) * alpha
+
+            // Snap residual error so we land exactly on target.
+            if abs(targetLinearGain - smoothedOutputGain) < 0.000_1 {
+                smoothedOutputGain = targetLinearGain
+            }
+            return smoothedOutputGain
         }
     }
 

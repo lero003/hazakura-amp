@@ -13,6 +13,7 @@ struct BoostStatusPresentation: Equatable {
     let detail: String
     let severity: BoostStatusSeverity
     let showsErrorBanner: Bool
+    let chipLabel: String
 
     static func make(statusText: String, isRunning: Bool, lastError: String?) -> BoostStatusPresentation {
         if isRunning {
@@ -20,7 +21,8 @@ struct BoostStatusPresentation: Equatable {
                 headline: "動作中",
                 detail: "オーディオはローカルで処理されます。録音・保存・送信は行いません。",
                 severity: .normal,
-                showsErrorBanner: false
+                showsErrorBanner: false,
+                chipLabel: "動作中"
             )
         }
 
@@ -30,49 +32,64 @@ struct BoostStatusPresentation: Equatable {
                 headline: "スリープ中",
                 detail: "スリープ準備で出力ゲインを 100% に戻しました。",
                 severity: .notice,
-                showsErrorBanner: false
+                showsErrorBanner: false,
+                chipLabel: "スリープ中"
             )
         case PoCAudioEngineStatus.waking.rawValue:
             return BoostStatusPresentation(
                 headline: "復帰中",
                 detail: "スリープ復帰後にオーディオ経路を再接続しています。",
                 severity: .notice,
-                showsErrorBanner: false
+                showsErrorBanner: false,
+                chipLabel: "復帰中"
+            )
+        case "reconnecting output":
+            return BoostStatusPresentation(
+                headline: "出力先を再接続中",
+                detail: "既定の出力デバイス変更後にオーディオ経路を再構築しています。",
+                severity: .notice,
+                showsErrorBanner: false,
+                chipLabel: "再接続中"
             )
         case PoCAudioEngineStatus.manualStartRequired.rawValue:
             return BoostStatusPresentation(
                 headline: "復帰後に開始が必要です",
                 detail: "開始を押してオーディオ経路を再接続してください。",
                 severity: .notice,
-                showsErrorBanner: false
+                showsErrorBanner: false,
+                chipLabel: "開始が必要"
             )
         case PoCAudioEngineStatus.restartRequired.rawValue:
             return BoostStatusPresentation(
                 headline: "再開が必要です",
-                detail: "開始を押してオーディオ経路を再構築してください。\(lastError ?? "")",
+                detail: "開始を押してオーディオ経路を再構築してください。\(lastError.map { " \($0)" } ?? "")",
                 severity: .warning,
-                showsErrorBanner: true
+                showsErrorBanner: true,
+                chipLabel: "再開が必要"
             )
         case PoCAudioEngineStatus.permissionDenied.rawValue:
             return BoostStatusPresentation(
                 headline: "システム音声へのアクセスが許可されていません",
                 detail: "システム設定 > プライバシーとセキュリティ で Hazakura Amp を許可してから、再度 開始 を押してください。",
                 severity: .warning,
-                showsErrorBanner: true
+                showsErrorBanner: true,
+                chipLabel: "権限が必要"
             )
         case PoCAudioEngineStatus.error.rawValue:
             return BoostStatusPresentation(
                 headline: "エラーが発生しました",
-                detail: "開始を押して再試行してください。繰り返す場合は Dev 診断を開いてください。\(lastError ?? "")",
+                detail: "開始を押して再試行してください。繰り返す場合は診断を開いてください。\(lastError.map { " \($0)" } ?? "")",
                 severity: .error,
-                showsErrorBanner: true
+                showsErrorBanner: true,
+                chipLabel: "エラー"
             )
         default:
             return BoostStatusPresentation(
                 headline: "ブーストを開始してください",
                 detail: "システム音をローカル処理します。録音・保存・送信は行いません。",
                 severity: .normal,
-                showsErrorBanner: false
+                showsErrorBanner: false,
+                chipLabel: "停止中"
             )
         }
     }
@@ -89,63 +106,38 @@ struct ContentView: View {
 
     var body: some View {
         VStack(alignment: .leading, spacing: 14) {
-            HStack {
-                Text("Hazakura Amp")
-                    .font(.headline)
-                Spacer()
-                StatusIndicator(isRunning: engine.isRunning)
-            }
+            BoostHeaderView(presentation: statusPresentation)
 
             StatusMessageView(presentation: statusPresentation)
 
-            Divider()
-
-            HStack {
-                Text("ブースト")
-                    .font(.subheadline)
-                Spacer()
-                Text(gainLabel)
-                    .monospacedDigit()
-                    .frame(minWidth: 100, alignment: .trailing)
+            if statusPresentation.showsErrorBanner {
+                ErrorBannerView(presentation: statusPresentation)
             }
 
-            Slider(value: $engine.configuredGain, in: 0.0...4.0, step: 0.01) {
-                Text("ブーストゲイン")
-            } minimumValueLabel: {
-                Text("0%").font(.caption2)
-            } maximumValueLabel: {
-                Text("400%").font(.caption2)
-            }
-            .disabled(!engine.isRunning)
-            .accessibilityLabel("Boost level")
-            .accessibilityValue(gainAccessibilityValue)
-            .accessibilityHint("Adjusts the local system audio boost level.")
+            BoostControlsSection(
+                configuredGain: $engine.configuredGain,
+                isRunning: engine.isRunning,
+                gainLabel: gainLabel,
+                gainAccessibilityValue: gainAccessibilityValue,
+                isHighBoost: isHighBoost,
+                onSelectPreset: { engine.applyPreset($0) }
+            )
 
-            HStack {
-                Button(engine.isRunning ? "停止" : "開始") {
+            EqualizerSection(equalizer: $engine.equalizer)
+
+            BoostActionBar(
+                isRunning: engine.isRunning,
+                startStopAccessibilityLabel: startStopAccessibilityLabel,
+                onToggle: {
                     if engine.isRunning { engine.stop() } else { engine.start() }
-                }
-                .keyboardShortcut(.defaultAction)
-                .controlSize(.large)
-                .accessibilityLabel(startStopAccessibilityLabel)
-                .accessibilityHint("Starts or stops the audio processing path.")
-                Spacer()
-                Button("終了") {
+                },
+                onQuit: {
                     engine.shutdownForAppTermination()
                     NSApplication.shared.terminate(nil)
                 }
-                .controlSize(.large)
-                .accessibilityLabel("Quit Hazakura Amp")
-                .accessibilityHint("Stops audio processing safely, then quits the app.")
-            }
+            )
 
-            Toggle("Dev", isOn: $isShowingDevMode)
-                .toggleStyle(.switch)
-                .font(.caption)
-                .accessibilityLabel("Developer diagnostics")
-                .accessibilityHint("Shows audio pipeline counters and recent diagnostic events.")
-
-            if isShowingDevMode {
+            DisclosureGroup(isExpanded: $isShowingDevMode) {
                 DevDiagnosticsView(
                     captureBufferCount: engine.captureBufferCount,
                     renderCallCount: engine.renderCallCount,
@@ -160,18 +152,18 @@ struct ContentView: View {
                     logStore: engine.diagnosticLog,
                     diagnosticSnapshot: engine.diagnosticSnapshotText()
                 )
+                .padding(.top, 6)
+            } label: {
+                Text("診断")
+                    .font(.caption)
+                    .foregroundStyle(.secondary)
+                    .accessibilityLabel("Developer diagnostics")
+                    .accessibilityHint("Shows audio pipeline counters and recent diagnostic events.")
             }
 
-            if statusPresentation.showsErrorBanner {
-                GroupBox {
-                    Text("⚠️ \(statusPresentation.detail)")
-                        .font(.caption)
-                        .foregroundStyle(statusPresentation.severity == .error ? .red : .orange)
-                        .textSelection(.enabled)
-                }
-            }
+            ProductFooterView()
         }
-        .padding()
+        .padding(16)
         .frame(width: 380)
         .frame(maxHeight: 560)
         .fixedSize(horizontal: false, vertical: true)
@@ -187,6 +179,10 @@ struct ContentView: View {
         )
     }
 
+    private var isHighBoost: Bool {
+        engine.configuredGain >= 3.0
+    }
+
     private var gainLabel: String {
         let percent = Int((engine.configuredGain * 100).rounded())
         if engine.configuredGain == 1.0 { return "100%" }
@@ -194,11 +190,27 @@ struct ContentView: View {
     }
 
     private var gainAccessibilityValue: String {
-        return "\(Int((engine.configuredGain * 100).rounded())) percent"
+        "\(Int((engine.configuredGain * 100).rounded())) percent"
     }
 
     private var startStopAccessibilityLabel: String {
         engine.isRunning ? "Stop boost processing" : "Start boost processing"
+    }
+}
+
+// MARK: - Header / Status
+
+private struct BoostHeaderView: View {
+    let presentation: BoostStatusPresentation
+
+    var body: some View {
+        HStack(alignment: .center, spacing: 10) {
+            Text("Hazakura Amp")
+                .font(.headline)
+                .accessibilityAddTraits(.isHeader)
+            Spacer(minLength: 8)
+            StatusIndicator(presentation: presentation)
+        }
     }
 }
 
@@ -209,6 +221,7 @@ private struct StatusMessageView: View {
         VStack(alignment: .leading, spacing: 3) {
             Text(presentation.headline)
                 .font(.subheadline)
+                .fontWeight(.medium)
                 .foregroundStyle(headlineColor)
             Text(presentation.detail)
                 .font(.caption)
@@ -234,19 +247,288 @@ private struct StatusMessageView: View {
 
 /// メニューバーアイコン横の稼働状態インジケータ。
 struct StatusIndicator: View {
-    let isRunning: Bool
+    let presentation: BoostStatusPresentation
 
     var body: some View {
         HStack(spacing: 6) {
             Circle()
-                .fill(isRunning ? Color.green : Color.gray)
-                .frame(width: 8, height: 8)
-            Text(isRunning ? "動作中" : "停止中")
+                .fill(dotColor)
+                .frame(width: 7, height: 7)
+            Text(presentation.chipLabel)
                 .font(.caption)
-                .foregroundStyle(.secondary)
+                .fontWeight(.medium)
+                .foregroundStyle(labelColor)
+                .lineLimit(1)
+        }
+        .padding(.horizontal, 8)
+        .padding(.vertical, 4)
+        .background(chipBackground, in: Capsule())
+        .accessibilityElement(children: .combine)
+        .accessibilityLabel("Status, \(presentation.chipLabel)")
+    }
+
+    private var dotColor: Color {
+        switch presentation.severity {
+        case .normal:
+            return presentation.chipLabel == "動作中" ? Color.green : Color.secondary.opacity(0.55)
+        case .notice:
+            return Color.orange.opacity(0.85)
+        case .warning:
+            return Color.orange
+        case .error:
+            return Color.red
+        }
+    }
+
+    private var labelColor: Color {
+        switch presentation.severity {
+        case .normal:
+            return .secondary
+        case .notice:
+            return .secondary
+        case .warning:
+            return .orange
+        case .error:
+            return .red
+        }
+    }
+
+    private var chipBackground: Color {
+        switch presentation.severity {
+        case .normal:
+            return Color.secondary.opacity(0.10)
+        case .notice:
+            return Color.orange.opacity(0.10)
+        case .warning:
+            return Color.orange.opacity(0.14)
+        case .error:
+            return Color.red.opacity(0.12)
         }
     }
 }
+
+private struct ErrorBannerView: View {
+    let presentation: BoostStatusPresentation
+
+    var body: some View {
+        Label {
+            Text(presentation.detail)
+                .font(.caption)
+                .foregroundStyle(textColor)
+                .textSelection(.enabled)
+                .fixedSize(horizontal: false, vertical: true)
+        } icon: {
+            Image(systemName: presentation.severity == .error ? "xmark.octagon.fill" : "exclamationmark.triangle.fill")
+                .foregroundStyle(textColor)
+        }
+        .padding(10)
+        .frame(maxWidth: .infinity, alignment: .leading)
+        .background(backgroundColor, in: RoundedRectangle(cornerRadius: 8, style: .continuous))
+        .accessibilityElement(children: .combine)
+        .accessibilityLabel("Warning, \(presentation.detail)")
+    }
+
+    private var textColor: Color {
+        presentation.severity == .error ? .red : .orange
+    }
+
+    private var backgroundColor: Color {
+        presentation.severity == .error
+            ? Color.red.opacity(0.10)
+            : Color.orange.opacity(0.10)
+    }
+}
+
+// MARK: - Controls / Actions
+
+private struct BoostControlsSection: View {
+    @Binding var configuredGain: Double
+    let isRunning: Bool
+    let gainLabel: String
+    let gainAccessibilityValue: String
+    let isHighBoost: Bool
+    let onSelectPreset: (BoostPreset) -> Void
+
+    var body: some View {
+        VStack(alignment: .leading, spacing: 8) {
+            HStack(alignment: .firstTextBaseline) {
+                Text("ブースト")
+                    .font(.subheadline)
+                    .foregroundStyle(.secondary)
+                Spacer()
+                Text(gainLabel)
+                    .font(.body)
+                    .fontWeight(.medium)
+                    .monospacedDigit()
+                    .foregroundStyle(isHighBoost ? Color.orange : Color.primary)
+                    .frame(minWidth: 100, alignment: .trailing)
+            }
+
+            Slider(value: $configuredGain, in: 0.0...4.0, step: 0.01) {
+                Text("ブーストゲイン")
+            } minimumValueLabel: {
+                Text("0%").font(.caption2).foregroundStyle(.secondary)
+            } maximumValueLabel: {
+                Text("400%").font(.caption2).foregroundStyle(.secondary)
+            }
+            .disabled(!isRunning)
+            .accessibilityLabel("Boost level")
+            .accessibilityValue(gainAccessibilityValue)
+            .accessibilityHint("Adjusts the local system audio boost level.")
+
+            HStack(spacing: 6) {
+                ForEach(BoostPreset.allCases) { preset in
+                    let isActive = BoostPreset.matching(gain: configuredGain) == preset
+                    Button {
+                        onSelectPreset(preset)
+                    } label: {
+                        VStack(spacing: 1) {
+                            Text(preset.title)
+                                .font(.caption2)
+                                .fontWeight(.semibold)
+                            Text(preset.percentLabel)
+                                .font(.caption2)
+                                .monospacedDigit()
+                                .foregroundStyle(.secondary)
+                        }
+                        .frame(maxWidth: .infinity)
+                        .padding(.vertical, 4)
+                    }
+                    .buttonStyle(.bordered)
+                    .tint(isActive ? Color.accentColor : Color.secondary)
+                    .controlSize(.small)
+                    .accessibilityLabel("Boost preset \(preset.title), \(preset.percentLabel)")
+                }
+            }
+
+            if isHighBoost {
+                Text("300% 以上では音源によって割れやすくなります。")
+                    .font(.caption2)
+                    .foregroundStyle(.orange)
+                    .fixedSize(horizontal: false, vertical: true)
+            }
+        }
+    }
+}
+
+private struct EqualizerSection: View {
+    @Binding var equalizer: EqualizerSettings
+
+    var body: some View {
+        VStack(alignment: .leading, spacing: 8) {
+            HStack {
+                Text("音質")
+                    .font(.subheadline)
+                    .foregroundStyle(.secondary)
+                Spacer()
+                Button("リセット") {
+                    equalizer = .neutral
+                }
+                .controlSize(.mini)
+                .disabled(equalizer == .neutral)
+                .accessibilityLabel("Reset equalizer")
+            }
+
+            eqSlider(title: "低域", value: lowBinding)
+            eqSlider(title: "中域", value: midBinding)
+            eqSlider(title: "高域", value: highBinding)
+
+            Text("簡易3バンドEQ（±6 dB）。ノイズ除去などの高度な処理は行いません。")
+                .font(.caption2)
+                .foregroundStyle(.tertiary)
+                .fixedSize(horizontal: false, vertical: true)
+        }
+    }
+
+    private var lowBinding: Binding<Double> {
+        Binding(
+            get: { Double(equalizer.lowDB) },
+            set: { equalizer.lowDB = Float($0) }
+        )
+    }
+
+    private var midBinding: Binding<Double> {
+        Binding(
+            get: { Double(equalizer.midDB) },
+            set: { equalizer.midDB = Float($0) }
+        )
+    }
+
+    private var highBinding: Binding<Double> {
+        Binding(
+            get: { Double(equalizer.highDB) },
+            set: { equalizer.highDB = Float($0) }
+        )
+    }
+
+    private func eqSlider(title: String, value: Binding<Double>) -> some View {
+        HStack(spacing: 8) {
+            Text(title)
+                .font(.caption)
+                .frame(width: 28, alignment: .leading)
+            Slider(value: value, in: -6...6, step: 0.5)
+                .controlSize(.small)
+                .accessibilityLabel("\(title) equalizer band")
+                .accessibilityValue("\(Int(value.wrappedValue.rounded())) decibels")
+            Text(String(format: "%+.1f", value.wrappedValue))
+                .font(.caption2)
+                .monospacedDigit()
+                .foregroundStyle(.secondary)
+                .frame(width: 40, alignment: .trailing)
+        }
+    }
+}
+
+private struct BoostActionBar: View {
+    let isRunning: Bool
+    let startStopAccessibilityLabel: String
+    let onToggle: () -> Void
+    let onQuit: () -> Void
+
+    var body: some View {
+        HStack(spacing: 10) {
+            Button(isRunning ? "停止" : "開始", action: onToggle)
+                .keyboardShortcut(.defaultAction)
+                .buttonStyle(.borderedProminent)
+                .tint(isRunning ? Color.secondary : Color.accentColor)
+                .controlSize(.large)
+                .accessibilityLabel(startStopAccessibilityLabel)
+                .accessibilityHint("Starts or stops the audio processing path.")
+
+            Spacer(minLength: 8)
+
+            Button("終了", action: onQuit)
+                .buttonStyle(.bordered)
+                .controlSize(.large)
+                .accessibilityLabel("Quit Hazakura Amp")
+                .accessibilityHint("Stops audio processing safely, then quits the app.")
+        }
+    }
+}
+
+private struct ProductFooterView: View {
+    var body: some View {
+        HStack {
+            Text("ローカル処理のみ · 録音なし")
+                .font(.caption2)
+                .foregroundStyle(.tertiary)
+            Spacer()
+            Text(versionLabel)
+                .font(.caption2)
+                .foregroundStyle(.tertiary)
+                .monospacedDigit()
+        }
+        .padding(.top, 2)
+    }
+
+    private var versionLabel: String {
+        let info = Bundle.main.infoDictionary
+        let version = info?["CFBundleShortVersionString"] as? String ?? "—"
+        return "v\(version)"
+    }
+}
+
+// MARK: - Diagnostics
 
 /// audio pipeline の診断情報。動作確認用。
 struct DiagnosticsView: View {
@@ -261,57 +543,23 @@ struct DiagnosticsView: View {
     let isRunning: Bool
 
     var body: some View {
-        GroupBox("診断") {
+        GroupBox("診断メトリクス") {
             VStack(alignment: .leading, spacing: 4) {
-                HStack {
-                    Text("キャプチャバッファ:")
-                    Spacer()
-                    Text("\(captureBufferCount)")
-                        .monospacedDigit()
-                        .foregroundStyle(isRunning && captureBufferCount > 0 ? .primary : .secondary)
-                }
-                HStack {
-                    Text("レンダー呼び出し:")
-                    Spacer()
-                    Text("\(renderCallCount)")
-                        .monospacedDigit()
-                        .foregroundStyle(isRunning && renderCallCount > 0 ? .primary : .secondary)
-                }
-                HStack {
-                    Text("出力ゲイン:")
-                    Spacer()
-                    Text(String(format: "%.2f×", lastObservedGain))
-                        .monospacedDigit()
-                        .foregroundStyle(.secondary)
-                }
-                HStack {
-                    Text("利用可能フレーム:")
-                    Spacer()
-                    Text("\(availableFrames)")
-                        .monospacedDigit()
-                        .foregroundStyle(.secondary)
-                }
-                HStack {
-                    Text("アンダーラン:")
-                    Spacer()
-                    Text("\(underrunCount)")
-                        .monospacedDigit()
-                        .foregroundStyle(underrunCount == 0 ? Color.secondary : Color.orange)
-                }
-                HStack {
-                    Text("ドロップフレーム:")
-                    Spacer()
-                    Text("\(droppedFrameCount)")
-                        .monospacedDigit()
-                        .foregroundStyle(droppedFrameCount == 0 ? Color.secondary : Color.orange)
-                }
-                HStack {
-                    Text("最新バッファ:")
-                    Spacer()
-                    Text("\(latestBufferFrameCount)")
-                        .monospacedDigit()
-                        .foregroundStyle(.secondary)
-                }
+                metricRow(title: "キャプチャバッファ", value: "\(captureBufferCount)", emphasize: isRunning && captureBufferCount > 0)
+                metricRow(title: "レンダー呼び出し", value: "\(renderCallCount)", emphasize: isRunning && renderCallCount > 0)
+                metricRow(title: "出力ゲイン", value: String(format: "%.2f×", lastObservedGain))
+                metricRow(title: "利用可能フレーム", value: "\(availableFrames)")
+                metricRow(
+                    title: "アンダーラン",
+                    value: "\(underrunCount)",
+                    color: underrunCount == 0 ? Color.secondary : Color.orange
+                )
+                metricRow(
+                    title: "ドロップフレーム",
+                    value: "\(droppedFrameCount)",
+                    color: droppedFrameCount == 0 ? Color.secondary : Color.orange
+                )
+                metricRow(title: "最新バッファ", value: "\(latestBufferFrameCount)")
                 HStack {
                     Text("ヘルス:")
                     Spacer()
@@ -320,17 +568,27 @@ struct DiagnosticsView: View {
                         .foregroundStyle(healthColor)
                 }
                 if isRunning && captureBufferCount == 0 {
-                    Text("⚠️ ScreenCaptureKit の音声バッファがまだ届いていません")
+                    Label("ScreenCaptureKit の音声バッファがまだ届いていません", systemImage: "exclamationmark.triangle")
                         .font(.caption)
                         .foregroundStyle(.orange)
                 }
                 if isRunning && renderCallCount == 0 {
-                    Text("⚠️ AVAudioEngine のレンダー呼び出しがまだ発生していいません")
+                    Label("AVAudioEngine のレンダー呼び出しがまだ発生していません", systemImage: "exclamationmark.triangle")
                         .font(.caption)
                         .foregroundStyle(.orange)
                 }
             }
             .font(.caption)
+        }
+    }
+
+    private func metricRow(title: String, value: String, emphasize: Bool = false, color: Color? = nil) -> some View {
+        HStack {
+            Text("\(title):")
+            Spacer()
+            Text(value)
+                .monospacedDigit()
+                .foregroundStyle(color ?? (emphasize ? Color.primary : Color.secondary))
         }
     }
 

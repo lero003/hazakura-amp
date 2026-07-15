@@ -17,9 +17,9 @@
 	<key>CFBundlePackageType</key>
 	<string>APPL</string>
 	<key>CFBundleShortVersionString</key>
-	<string>0.3.1</string>
+	<string>0.4.0</string>
 	<key>CFBundleVersion</key>
-	<string>4</string>
+	<string>6</string>
 	<key>HazakuraSigningKind</key>
 	<string>$(CODE_SIGN_IDENTITY)</string>
 	<key>LSMinimumSystemVersion</key>
@@ -29,7 +29,7 @@
 	<key>NSAudioCaptureUsageDescription</key>
 	<string>Hazakura Amp uses access to system audio output to apply a local volume boost. It does not record, store, or transmit audio.</string>
 	<key>NSHumanReadableCopyright</key>
-	<string>Hazakura Amp — Core Audio Tap verification</string>
+	<string>Copyright © Hazakura Amp</string>
 	<key>SFSafariWebExtensionConverterVersion</key>
 	<string>26.5</string>
 </dict>

@@ -3,30 +3,33 @@
   top: 84px;
   right: 18px;
   z-index: 2147483647;
-  width: min(286px, calc(100vw - 24px));
+  width: min(280px, calc(100vw - 24px));
   box-sizing: border-box;
-  padding: 9px;
-  border: 1px solid rgba(255, 255, 255, 0.14);
-  border-radius: 8px;
-  background: rgba(20, 22, 24, 0.9);
-  color: #f7f7f2;
+  padding: 10px;
+  border: 1px solid rgba(255, 255, 255, 0.12);
+  border-radius: 10px;
+  background: rgba(18, 20, 22, 0.92);
+  color: #f4f4ef;
   box-shadow:
-    0 14px 34px rgba(0, 0, 0, 0.26),
-    inset 0 1px 0 rgba(255, 255, 255, 0.08);
-  font: 12px/1.3 -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
-  backdrop-filter: blur(14px) saturate(1.08);
-  -webkit-backdrop-filter: blur(14px) saturate(1.08);
+    0 12px 28px rgba(0, 0, 0, 0.28),
+    inset 0 1px 0 rgba(255, 255, 255, 0.07);
+  font: 12px/1.35 -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+  backdrop-filter: blur(16px) saturate(1.05);
+  -webkit-backdrop-filter: blur(16px) saturate(1.05);
   transition:
     opacity 160ms ease,
     box-shadow 160ms ease,
-    transform 160ms ease;
+    transform 160ms ease,
+    border-color 160ms ease;
   user-select: none;
 }
 
 .hazakura-amp-header,
 .hazakura-amp-action-row,
 .hazakura-amp-preset-row,
-.hazakura-amp-boost-row {
+.hazakura-amp-speed-row,
+.hazakura-amp-boost-row,
+.hazakura-amp-tools {
   display: flex;
   align-items: center;
 }
@@ -34,66 +37,81 @@
 .hazakura-amp-header {
   justify-content: space-between;
   gap: 8px;
-  margin-bottom: 8px;
+  margin-bottom: 9px;
   cursor: grab;
   touch-action: none;
 }
 
 .hazakura-amp-title {
-  font-weight: 700;
-  letter-spacing: 0;
+  font-weight: 650;
+  letter-spacing: -0.01em;
+  color: rgba(244, 244, 239, 0.96);
 }
 
 .hazakura-amp-controls {
   display: grid;
-  gap: 9px;
+  gap: 8px;
 }
 
 .hazakura-amp-boost-row {
   display: grid;
-  grid-template-columns: auto minmax(104px, 1fr) 43px;
+  grid-template-columns: auto minmax(100px, 1fr) 46px;
   gap: 8px;
+  color: rgba(244, 244, 239, 0.78);
 }
 
 .hazakura-amp-boost-row input[type="range"] {
   width: 100%;
-  accent-color: #8fb9e8;
+  accent-color: #8aaed4;
 }
 
 .hazakura-amp-boost-value {
   text-align: right;
   font-variant-numeric: tabular-nums;
-  color: rgba(247, 247, 242, 0.86);
+  font-weight: 600;
+  color: rgba(244, 244, 239, 0.9);
 }
 
 .hazakura-amp-action-row {
   justify-content: space-between;
   gap: 10px;
+  margin-top: 1px;
 }
 
 .hazakura-amp-icon-button,
 .hazakura-amp-repeat-button,
-.hazakura-amp-preset-button {
+.hazakura-amp-captions-button,
+.hazakura-amp-preset-button,
+.hazakura-amp-speed-button {
   min-height: 28px;
-  border: 1px solid rgba(255, 255, 255, 0.18);
-  border-radius: 6px;
-  background: rgba(255, 255, 255, 0.08);
+  border: 1px solid rgba(255, 255, 255, 0.14);
+  border-radius: 7px;
+  background: rgba(255, 255, 255, 0.06);
   color: inherit;
   font: inherit;
   cursor: pointer;
   transition:
     background 140ms ease,
     border-color 140ms ease,
+    color 140ms ease,
     transform 140ms ease;
 }
 
 .hazakura-amp-icon-button {
   width: 28px;
   padding: 0;
+  color: rgba(244, 244, 239, 0.82);
 }
 
-.hazakura-amp-repeat-button {
+.hazakura-amp-repeat-button,
+.hazakura-amp-captions-button {
   padding: 0 10px;
+  font-weight: 600;
+  letter-spacing: -0.01em;
+}
+
+.hazakura-amp-tools {
+  gap: 6px;
 }
 
 .hazakura-amp-preset-row {
@@ -102,62 +120,99 @@
   gap: 5px;
 }
 
-.hazakura-amp-preset-button {
+.hazakura-amp-speed-row {
+  gap: 8px;
+}
+
+.hazakura-amp-row-label {
+  flex: 0 0 auto;
+  color: rgba(244, 244, 239, 0.72);
+  font-size: 11px;
+}
+
+.hazakura-amp-speed-buttons {
+  display: grid;
+  grid-template-columns: repeat(5, 1fr);
+  gap: 4px;
+  flex: 1;
+}
+
+.hazakura-amp-preset-button,
+.hazakura-amp-speed-button {
   min-height: 24px;
   padding: 0;
   font-size: 11px;
-  color: rgba(247, 247, 242, 0.78);
+  font-variant-numeric: tabular-nums;
+  color: rgba(244, 244, 239, 0.72);
 }
 
 .hazakura-amp-icon-button:hover,
 .hazakura-amp-repeat-button:hover,
-.hazakura-amp-preset-button:hover {
-  background: rgba(255, 255, 255, 0.12);
+.hazakura-amp-captions-button:hover,
+.hazakura-amp-preset-button:hover,
+.hazakura-amp-speed-button:hover {
+  background: rgba(255, 255, 255, 0.11);
+  border-color: rgba(255, 255, 255, 0.2);
 }
 
 .hazakura-amp-icon-button:active,
 .hazakura-amp-repeat-button:active,
-.hazakura-amp-preset-button:active {
+.hazakura-amp-captions-button:active,
+.hazakura-amp-preset-button:active,
+.hazakura-amp-speed-button:active {
   transform: translateY(1px);
 }
 
-.hazakura-amp-preset-button.is-active {
-  border-color: rgba(143, 185, 232, 0.72);
-  background: rgba(143, 185, 232, 0.16);
+.hazakura-amp-preset-button.is-active,
+.hazakura-amp-speed-button.is-active {
+  border-color: rgba(138, 174, 212, 0.78);
+  background: rgba(138, 174, 212, 0.2);
   color: #f7f7f2;
+  font-weight: 650;
 }
 
 .hazakura-amp-repeat-button.is-on {
-  border-color: rgba(143, 185, 232, 0.78);
-  background: rgba(143, 185, 232, 0.18);
+  border-color: rgba(138, 174, 212, 0.82);
+  background: rgba(138, 174, 212, 0.2);
+  color: #f7f7f2;
 }
 
 .hazakura-amp-safety {
   min-height: 0;
-  color: rgba(255, 196, 112, 0.94);
+  color: rgba(232, 186, 118, 0.96);
   font-size: 11px;
-  line-height: 1.2;
+  line-height: 1.25;
 }
 
 .hazakura-amp-floating-bar.hazakura-amp-high-boost .hazakura-amp-boost-value {
-  color: rgba(255, 196, 112, 0.96);
+  color: rgba(232, 186, 118, 0.98);
 }
 
 .hazakura-amp-floating-bar.hazakura-amp-disconnected {
-  border-color: rgba(255, 196, 112, 0.42);
+  border-color: rgba(232, 186, 118, 0.36);
 }
 
 .hazakura-amp-floating-bar.hazakura-amp-disconnected .hazakura-amp-status {
-  color: rgba(255, 196, 112, 0.96);
+  color: rgba(232, 186, 118, 0.96);
+  background: rgba(232, 186, 118, 0.12);
+  border-color: rgba(232, 186, 118, 0.22);
 }
 
 .hazakura-amp-status {
+  max-width: 140px;
   min-width: 0;
   overflow: hidden;
-  color: rgba(247, 247, 242, 0.72);
-  text-align: right;
+  padding: 4px 8px;
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  border-radius: 999px;
+  background: rgba(255, 255, 255, 0.06);
+  color: rgba(244, 244, 239, 0.72);
+  text-align: center;
   text-overflow: ellipsis;
   white-space: nowrap;
+  font-size: 11px;
+  font-weight: 600;
+  letter-spacing: -0.01em;
 }
 
 .hazakura-amp-floating-bar.hazakura-amp-collapsed .hazakura-amp-controls {
@@ -165,9 +220,9 @@
 }
 
 .hazakura-amp-floating-bar.hazakura-amp-collapsed {
-  width: 156px;
+  width: 148px;
   padding: 7px 8px;
-  opacity: 0.9;
+  opacity: 0.92;
 }
 
 .hazakura-amp-floating-bar.hazakura-amp-collapsed .hazakura-amp-header {
@@ -176,8 +231,8 @@
 
 .hazakura-amp-floating-bar.hazakura-amp-dragging {
   box-shadow:
-    0 18px 42px rgba(0, 0, 0, 0.32),
-    inset 0 1px 0 rgba(255, 255, 255, 0.1);
+    0 16px 36px rgba(0, 0, 0, 0.34),
+    inset 0 1px 0 rgba(255, 255, 255, 0.09);
   cursor: grabbing;
   transform: scale(1.01);
 }
@@ -191,6 +246,6 @@
     top: auto;
     right: 12px;
     bottom: 78px;
-    width: min(284px, calc(100vw - 24px));
+    width: min(280px, calc(100vw - 24px));
   }
 }
