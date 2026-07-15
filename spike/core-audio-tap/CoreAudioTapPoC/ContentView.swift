@@ -105,68 +105,72 @@ struct ContentView: View {
     }
 
     var body: some View {
-        VStack(alignment: .leading, spacing: 14) {
-            BoostHeaderView(presentation: statusPresentation)
+        // Keep a fixed popover height budget and scroll when diagnostics expand,
+        // so primary controls stay reachable instead of being pushed off-screen.
+        ScrollView(.vertical, showsIndicators: true) {
+            VStack(alignment: .leading, spacing: 14) {
+                BoostHeaderView(presentation: statusPresentation)
 
-            StatusMessageView(presentation: statusPresentation)
+                StatusMessageView(presentation: statusPresentation)
 
-            if statusPresentation.showsErrorBanner {
-                ErrorBannerView(presentation: statusPresentation)
-            }
-
-            BoostControlsSection(
-                configuredGain: $engine.configuredGain,
-                isRunning: engine.isRunning,
-                gainLabel: gainLabel,
-                gainAccessibilityValue: gainAccessibilityValue,
-                isHighBoost: isHighBoost,
-                onSelectPreset: { engine.applyPreset($0) }
-            )
-
-            EqualizerSection(equalizer: $engine.equalizer)
-
-            BoostActionBar(
-                isRunning: engine.isRunning,
-                startStopAccessibilityLabel: startStopAccessibilityLabel,
-                onToggle: {
-                    if engine.isRunning { engine.stop() } else { engine.start() }
-                },
-                onQuit: {
-                    engine.shutdownForAppTermination()
-                    NSApplication.shared.terminate(nil)
+                if statusPresentation.showsErrorBanner {
+                    ErrorBannerView(presentation: statusPresentation)
                 }
-            )
 
-            DisclosureGroup(isExpanded: $isShowingDevMode) {
-                DevDiagnosticsView(
-                    captureBufferCount: engine.captureBufferCount,
-                    renderCallCount: engine.renderCallCount,
-                    lastObservedGain: engine.lastObservedGain,
-                    availableFrames: engine.availableFrames,
-                    underrunCount: engine.underrunCount,
-                    droppedFrameCount: engine.droppedFrameCount,
-                    latestBufferFrameCount: engine.latestBufferFrameCount,
-                    health: engine.backendHealth,
+                BoostControlsSection(
+                    configuredGain: $engine.configuredGain,
                     isRunning: engine.isRunning,
-                    safariExtensionController: safariExtensionController,
-                    logStore: engine.diagnosticLog,
-                    diagnosticSnapshot: engine.diagnosticSnapshotText()
+                    gainLabel: gainLabel,
+                    gainAccessibilityValue: gainAccessibilityValue,
+                    isHighBoost: isHighBoost,
+                    onSelectPreset: { engine.applyPreset($0) }
                 )
-                .padding(.top, 6)
-            } label: {
-                Text("診断")
-                    .font(.caption)
-                    .foregroundStyle(.secondary)
-                    .accessibilityLabel("Developer diagnostics")
-                    .accessibilityHint("Shows audio pipeline counters and recent diagnostic events.")
-            }
 
-            ProductFooterView()
+                EqualizerSection(equalizer: $engine.equalizer)
+
+                BoostActionBar(
+                    isRunning: engine.isRunning,
+                    startStopAccessibilityLabel: startStopAccessibilityLabel,
+                    onToggle: {
+                        if engine.isRunning { engine.stop() } else { engine.start() }
+                    },
+                    onQuit: {
+                        engine.shutdownForAppTermination()
+                        NSApplication.shared.terminate(nil)
+                    }
+                )
+
+                DisclosureGroup(isExpanded: $isShowingDevMode) {
+                    DevDiagnosticsView(
+                        captureBufferCount: engine.captureBufferCount,
+                        renderCallCount: engine.renderCallCount,
+                        lastObservedGain: engine.lastObservedGain,
+                        availableFrames: engine.availableFrames,
+                        underrunCount: engine.underrunCount,
+                        droppedFrameCount: engine.droppedFrameCount,
+                        latestBufferFrameCount: engine.latestBufferFrameCount,
+                        health: engine.backendHealth,
+                        isRunning: engine.isRunning,
+                        safariExtensionController: safariExtensionController,
+                        logStore: engine.diagnosticLog,
+                        diagnosticSnapshot: engine.diagnosticSnapshotText()
+                    )
+                    .padding(.top, 6)
+                } label: {
+                    Text("診断")
+                        .font(.caption)
+                        .foregroundStyle(.secondary)
+                        .accessibilityLabel("Developer diagnostics")
+                        .accessibilityHint("Shows audio pipeline counters and recent diagnostic events.")
+                }
+
+                ProductFooterView()
+            }
+            .padding(16)
+            .frame(maxWidth: .infinity, alignment: .leading)
         }
-        .padding(16)
         .frame(width: 380)
         .frame(maxHeight: 560)
-        .fixedSize(horizontal: false, vertical: true)
     }
 
     // MARK: - Helpers
@@ -487,13 +491,22 @@ private struct BoostActionBar: View {
 
     var body: some View {
         HStack(spacing: 10) {
-            Button(isRunning ? "停止" : "開始", action: onToggle)
-                .keyboardShortcut(.defaultAction)
-                .buttonStyle(.borderedProminent)
-                .tint(isRunning ? Color.secondary : Color.accentColor)
-                .controlSize(.large)
-                .accessibilityLabel(startStopAccessibilityLabel)
-                .accessibilityHint("Starts or stops the audio processing path.")
+            // Start is prominent accent. Stop is bordered (not secondary-tinted
+            // prominent), so the label stays readable in light and dark mode.
+            Group {
+                if isRunning {
+                    Button("停止", action: onToggle)
+                        .buttonStyle(.bordered)
+                } else {
+                    Button("開始", action: onToggle)
+                        .buttonStyle(.borderedProminent)
+                        .tint(Color.accentColor)
+                }
+            }
+            .keyboardShortcut(.defaultAction)
+            .controlSize(.large)
+            .accessibilityLabel(startStopAccessibilityLabel)
+            .accessibilityHint("Starts or stops the audio processing path.")
 
             Spacer(minLength: 8)
 
@@ -673,15 +686,14 @@ struct DevDiagnosticsView: View {
                     .font(.caption)
                     .foregroundStyle(.secondary)
             } else {
-                ScrollView {
-                    LazyVStack(alignment: .leading, spacing: 6) {
-                        ForEach(Array(logStore.entries.reversed())) { entry in
-                            DiagnosticLogRow(entry: entry)
-                        }
+                // Use the outer popover ScrollView only — nested ScrollViews fight
+                // trackpad gestures when diagnostics expand.
+                VStack(alignment: .leading, spacing: 6) {
+                    ForEach(Array(logStore.entries.reversed())) { entry in
+                        DiagnosticLogRow(entry: entry)
                     }
-                    .frame(maxWidth: .infinity, alignment: .leading)
                 }
-                .frame(maxHeight: 160)
+                .frame(maxWidth: .infinity, alignment: .leading)
                 .textSelection(.enabled)
             }
         }
