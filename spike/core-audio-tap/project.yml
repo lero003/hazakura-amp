@@ -51,8 +51,8 @@ targets:
         LSUIElement: true
         NSAudioCaptureUsageDescription: "Hazakura Amp uses access to system audio output to apply a local volume boost. It does not record, store, or transmit audio."
         NSHumanReadableCopyright: "Copyright © Hazakura Amp"
-        CFBundleShortVersionString: "0.4.0"
-        CFBundleVersion: "6"
+        CFBundleShortVersionString: "0.4.1"
+        CFBundleVersion: "7"
         HazakuraSigningKind: "$(CODE_SIGN_IDENTITY)"
         SFSafariWebExtensionConverterVersion: "26.5"
     entitlements:
@@ -109,8 +109,8 @@ targets:
       path: CoreAudioTapPoC/Resources/HazakuraAmpSafariExtension-Info.plist
       properties:
         CFBundleDisplayName: "Hazakura Amp Safari Extension"
-        CFBundleShortVersionString: "0.4.0"
-        CFBundleVersion: "6"
+        CFBundleShortVersionString: "0.4.1"
+        CFBundleVersion: "7"
         NSExtension:
           NSExtensionPointIdentifier: com.apple.Safari.web-extension
           NSExtensionPrincipalClass: "$(PRODUCT_MODULE_NAME).SafariWebExtensionHandler"

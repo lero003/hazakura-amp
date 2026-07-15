@@ -139,11 +139,11 @@ final class GainProcessorTests: XCTestCase {
         XCTAssertNil(plist["NSMicrophoneUsageDescription"])
     }
 
-    func testInfoPlistUsesV040ReleaseVersion() throws {
+    func testInfoPlistUsesV041ReleaseVersion() throws {
         let plist = try loadInfoPlist()
 
-        XCTAssertEqual(plist["CFBundleShortVersionString"] as? String, "0.4.0")
-        XCTAssertEqual(plist["CFBundleVersion"] as? String, "6")
+        XCTAssertEqual(plist["CFBundleShortVersionString"] as? String, "0.4.1")
+        XCTAssertEqual(plist["CFBundleVersion"] as? String, "7")
         XCTAssertEqual(plist["CFBundleDisplayName"] as? String, "Hazakura Amp")
         XCTAssertFalse((plist["CFBundleDisplayName"] as? String)?.contains("!") ?? true)
         XCTAssertEqual(plist["NSHumanReadableCopyright"] as? String, "Copyright © Hazakura Amp")

@@ -2,7 +2,7 @@
 
 ## Current State
 - Hazakura Amp is a menu-bar system audio boost utility with a Safari YouTube companion remote.
-- Current version: **v0.4.0** (build 6).
+- Current version: **v0.4.1** (build 7).
 - Native app owns all system audio processing. YouTube content script does not use Web Audio for boost.
 - Audio path: Core Audio process tap (mute) + ScreenCaptureKit capture + ring buffer + gain ramp + soft limiter + 3-band EQ + AVAudioEngine output.
 
@@ -32,9 +32,10 @@
 - Safari manual E2E still required for extension packaging/signing path.
 
 ## Distribution
-- `main` includes v0.4.0.
+- `main` includes v0.4.1.
+- GitHub prerelease: `v0.4.1-dev` with `HazakuraAmp-v0.4.1-dev.zip`.
 - Team preview zip: `cd spike/core-audio-tap && ./scripts/build_dev_distribution.sh`
-  - Output under `dist/HazakuraAmp-v0.4.0-dev.zip` (gitignored).
+  - Output under `dist/HazakuraAmp-v0.4.1-dev.zip` (gitignored).
   - Apple Development signed; requires Macs on the development profile.
 - Developer ID path `./scripts/build_release_candidate.sh` needs Developer ID provisioning profiles for `dev.hazakura-amp` + safari-extension with App Group; currently missing on this machine.
 - Next distribution upgrade: create those Developer ID profiles, rebuild Release zip, notarize + staple.

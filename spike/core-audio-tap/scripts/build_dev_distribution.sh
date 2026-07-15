@@ -27,6 +27,8 @@ if [[ ! -f "$PROJECT_DIR/CoreAudioTapPoC.xcodeproj/project.pbxproj" ]]; then
 fi
 
 echo "==> Building $CONFIGURATION with Automatic Apple Development signing"
+# Prefer a clean product so prior unit-test host embeds (*.xctest) are not shipped.
+rm -rf "$DERIVED_DATA_PATH/Build/Products/$CONFIGURATION"
 xcodebuild \
   -project CoreAudioTapPoC.xcodeproj \
   -scheme CoreAudioTapPoC \
@@ -42,6 +44,13 @@ xcodebuild \
 if [[ ! -d "$APP_PATH" ]]; then
   echo "Built app not found at $APP_PATH" >&2
   exit 1
+fi
+
+# Safety: never ship unit-test bundles accidentally embedded by TEST_HOST runs.
+if compgen -G "$APP_PATH/Contents/PlugIns/"*.xctest >/dev/null; then
+  echo "Removing embedded test bundles from app before packaging:" >&2
+  rm -rf "$APP_PATH/Contents/PlugIns/"*.xctest
+  codesign --force --deep --sign "Apple Development" --options runtime --timestamp=none "$APP_PATH"
 fi
 
 APP_VERSION="$(/usr/libexec/PlistBuddy -c 'Print :CFBundleShortVersionString' "$APP_PATH/Contents/Info.plist")"

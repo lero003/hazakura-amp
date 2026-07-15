@@ -8,7 +8,7 @@
 
 ## ステータス
 
-**フェーズ: v0.4.0 feature expansion / 手元・知人向け製品品質候補**
+**フェーズ: v0.4.1 developer preview / 手元・知人向け製品品質候補**
 
 - ✅ 企画書 [`hazakura-amp企画書.md`](./hazakura-amp企画書.md)
 - ✅ 準備ドキュメント（本リポジトリの `docs/`）
@@ -86,16 +86,18 @@ open "spike/core-audio-tap/build/Build/Products/Debug/Hazakura Amp.app"
 ```bash
 cd spike/core-audio-tap
 ./scripts/build_dev_distribution.sh
-# → dist/HazakuraAmp-v0.4.0-dev.zip
-# → dist/HazakuraAmp-v0.4.0-dev.SHA256SUMS
+# → dist/HazakuraAmp-v0.4.1-dev.zip
+# → dist/HazakuraAmp-v0.4.1-dev.SHA256SUMS
 ```
 
 - **署名**: Apple Development + team provisioning profile（App Group 付き）
 - **対象**: Developer ポータルに登録された Mac / チーム内テスター
 - **公証なし**。Gatekeeper は初回「右クリック → 開く」が必要な場合あり
+- 別マシンで起動できない場合は、その Mac を Devices に登録してプロファイルを更新するか、Developer ID + 公証へ進む
 - 一般公開に近い配布は、App Group 付き **Developer ID プロファイル** を用意したうえで `build_release_candidate.sh` → `notarytool` / staple
 
-詳細: [`spike/core-audio-tap/RELEASE_NOTES_v0.4.0.md`](./spike/core-audio-tap/RELEASE_NOTES_v0.4.0.md)
+最新 dev リリース: [`v0.4.1-dev`](https://github.com/lero003/hazakura-amp/releases/tag/v0.4.1-dev)  
+詳細: [`spike/core-audio-tap/RELEASE_NOTES_v0.4.1.md`](./spike/core-audio-tap/RELEASE_NOTES_v0.4.1.md)
 
 普段の開発確認は `Debug` / Apple Development 署名を使います。公証と staple は外部配布直前の別工程です。
 
