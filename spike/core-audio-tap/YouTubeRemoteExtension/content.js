@@ -261,25 +261,185 @@
     applyPlaybackRate();
   }
 
-  function toggleCaptions() {
-    // Prefer the native YouTube CC control rather than inventing captions.
+  function getMoviePlayer() {
+    return document.querySelector("#movie_player.html5-video-player")
+      || document.querySelector("#movie_player")
+      || document.querySelector(".html5-video-player");
+  }
+
+  function findSubtitlesButton() {
+    // Prefer controls inside the active player so we don't hit hidden/duplicate chrome.
+    const roots = [getMoviePlayer(), document].filter(Boolean);
     const selectors = [
       "button.ytp-subtitles-button",
-      ".ytp-subtitles-button",
-      "button[aria-label*='字幕']",
-      "button[aria-label*='Subtitles']",
-      "button[aria-label*='Captions']",
-      "button[data-tooltip-target-id='ytp-subtitles-button']"
+      "button[data-tooltip-target-id='ytp-subtitles-button']",
+      ".ytp-subtitles-button"
     ];
-    for (const selector of selectors) {
-      const button = document.querySelector(selector);
-      if (button) {
-        button.click();
-        setStatus("字幕を切替");
-        return;
+    for (const root of roots) {
+      for (const selector of selectors) {
+        const button = root.querySelector?.(selector);
+        if (button instanceof HTMLElement) {
+          return button;
+        }
       }
     }
-    setStatus("字幕ボタンなし");
+    return null;
+  }
+
+  function captionsTrackLooksActive(track) {
+    if (!track || typeof track !== "object") {
+      return false;
+    }
+    // YouTube may return {} / null-like track when captions are off.
+    return Boolean(
+      track.languageCode
+      || track.language
+      || track.displayName
+      || track.name
+      || track.translationLanguage
+      || track.vss_id
+      || track.kind
+    );
+  }
+
+  function areCaptionsOn() {
+    const player = getMoviePlayer();
+    if (player && typeof player.getOption === "function") {
+      try {
+        if (captionsTrackLooksActive(player.getOption("captions", "track"))) {
+          return true;
+        }
+      } catch (_) {
+        // Fall through to DOM signals.
+      }
+    }
+
+    const button = findSubtitlesButton();
+    if (button?.getAttribute("aria-pressed") === "true") {
+      return true;
+    }
+    if (button?.classList.contains("ytp-button-toggled")) {
+      return true;
+    }
+
+    // Visible caption window is a strong signal that captions are showing.
+    const captionWindow = document.querySelector(
+      ".ytp-caption-window-container .captions-text, .ytp-caption-window-container .ytp-caption-segment"
+    );
+    return Boolean(captionWindow && captionWindow.childElementCount + (captionWindow.textContent || "").trim().length > 0);
+  }
+
+  function setCaptionsViaPlayerApi(wantOn) {
+    const player = getMoviePlayer();
+    if (!player) {
+      return false;
+    }
+
+    // Best path when available: unload captions module to force OFF.
+    if (!wantOn && typeof player.unloadModule === "function") {
+      try {
+        player.unloadModule("captions");
+        if (typeof player.setOption === "function") {
+          try { player.setOption("captions", "track", null); } catch (_) { /* ignore */ }
+        }
+        return true;
+      } catch (_) {
+        // Continue to setOption path.
+      }
+    }
+
+    if (typeof player.setOption !== "function") {
+      return false;
+    }
+
+    try {
+      if (typeof player.loadModule === "function") {
+        try { player.loadModule("captions"); } catch (_) { /* already loaded */ }
+      }
+
+      if (!wantOn) {
+        // Different YT builds accept null / undefined / empty object for "off".
+        try { player.setOption("captions", "track", null); } catch (_) { /* ignore */ }
+        try { player.setOption("captions", "track", undefined); } catch (_) { /* ignore */ }
+        try { player.setOption("captions", "track", {}); } catch (_) { /* ignore */ }
+        return true;
+      }
+
+      const tracklist = player.getOption?.("captions", "tracklist") || [];
+      if (Array.isArray(tracklist) && tracklist.length > 0) {
+        player.setOption("captions", "track", tracklist[0]);
+        return true;
+      }
+
+      // No tracklist yet — let the button path enable captions and pick a default.
+      return false;
+    } catch (_) {
+      return false;
+    }
+  }
+
+  function simulateUserClick(element) {
+    if (!(element instanceof HTMLElement)) {
+      return;
+    }
+    const opts = { bubbles: true, cancelable: true, view: window, buttons: 1 };
+    for (const type of ["pointerdown", "mousedown", "pointerup", "mouseup", "click"]) {
+      element.dispatchEvent(new MouseEvent(type, opts));
+    }
+  }
+
+  function syncCaptionsButton() {
+    if (!captionsButton) {
+      return;
+    }
+    const isOn = areCaptionsOn();
+    captionsButton.classList.toggle("is-on", isOn);
+    captionsButton.setAttribute("aria-pressed", String(isOn));
+  }
+
+  function toggleCaptions() {
+    // Synthetic button.click() often turns captions ON but fails to turn them OFF
+    // on current YouTube builds. Prefer the player captions API, then a fuller
+    // mouse-event sequence on the native CC control.
+    const wasOn = areCaptionsOn();
+    const wantOn = !wasOn;
+
+    let handled = setCaptionsViaPlayerApi(wantOn);
+
+    if (!handled || areCaptionsOn() === wasOn) {
+      const button = findSubtitlesButton();
+      if (button) {
+        // If captions are on, a single click should toggle off. Prefer the real
+        // control scoped to the movie player rather than broad aria-label matches.
+        simulateUserClick(button);
+        handled = true;
+
+        // If still stuck on after a click, force-off via API once more.
+        if (wasOn && areCaptionsOn()) {
+          setCaptionsViaPlayerApi(false);
+        }
+      }
+    }
+
+    // toggleSubtitles exists on some player builds as a last resort.
+    const player = getMoviePlayer();
+    if (areCaptionsOn() === wasOn && player && typeof player.toggleSubtitles === "function") {
+      try {
+        player.toggleSubtitles();
+        handled = true;
+      } catch (_) {
+        // ignore
+      }
+    }
+
+    requestAnimationFrame(() => {
+      syncCaptionsButton();
+      if (!handled && !findSubtitlesButton()) {
+        setStatus("字幕ボタンなし");
+        return;
+      }
+      setStatus(areCaptionsOn() ? "字幕 ON" : "字幕 OFF");
+    });
   }
 
   function onVideoEnded() {
@@ -510,9 +670,16 @@
 
     captionsButton = makeButton("字幕", "hazakura-amp-captions-button");
     captionsButton.setAttribute("aria-label", "Toggle YouTube captions");
-    captionsButton.addEventListener("click", toggleCaptions);
+    captionsButton.setAttribute("aria-pressed", "false");
+    captionsButton.addEventListener("click", (event) => {
+      // Keep the remote from stealing focus-related player chrome weirdness.
+      event.preventDefault();
+      event.stopPropagation();
+      toggleCaptions();
+    });
 
     tools.append(repeatButton, captionsButton);
+    syncCaptionsButton();
 
     statusText = document.createElement("span");
     statusText.className = "hazakura-amp-status";
@@ -539,10 +706,12 @@
       applyCollapsed();
       applyRepeat();
       applyPlaybackRate();
+      syncCaptionsButton();
       requestState();
     } else {
       applyRepeat();
       applyPlaybackRate();
+      syncCaptionsButton();
     }
   }
 
@@ -583,6 +752,7 @@
     if (root && isWatchPage()) {
       applyPlaybackRate();
       applyRepeat();
+      syncCaptionsButton();
       requestState();
     }
   }, statePollIntervalMs);

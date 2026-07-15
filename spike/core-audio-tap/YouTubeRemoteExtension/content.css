@@ -171,7 +171,8 @@
   font-weight: 650;
 }
 
-.hazakura-amp-repeat-button.is-on {
+.hazakura-amp-repeat-button.is-on,
+.hazakura-amp-captions-button.is-on {
   border-color: rgba(138, 174, 212, 0.82);
   background: rgba(138, 174, 212, 0.2);
   color: #f7f7f2;
