@@ -31,10 +31,19 @@
 - EQ + high boost can still clip; limiter reduces but does not eliminate distortion.
 - Safari manual E2E still required for extension packaging/signing path.
 
+## Distribution
+- `main` includes v0.4.0.
+- Team preview zip: `cd spike/core-audio-tap && ./scripts/build_dev_distribution.sh`
+  - Output under `dist/HazakuraAmp-v0.4.0-dev.zip` (gitignored).
+  - Apple Development signed; requires Macs on the development profile.
+- Developer ID path `./scripts/build_release_candidate.sh` needs Developer ID provisioning profiles for `dev.hazakura-amp` + safari-extension with App Group; currently missing on this machine.
+- Next distribution upgrade: create those Developer ID profiles, rebuild Release zip, notarize + staple.
+
 ## Next Actions
 1. Local smoke: presets, EQ, gain ramp feel, device switch reconnect.
 2. Safari smoke: speed, captions, video-end reset to 100%, boost remote.
-3. Optional: persist gain/EQ across launches, launch-at-login, notarized DMG.
+3. Create Developer ID profiles for app + extension, then notarized DMG.
+4. Optional product: persist gain/EQ, launch-at-login.
 
 ## Avoid
 - Do not add ad blocking, sponsor skipping, downloads, or Web Audio as the primary boost path.
