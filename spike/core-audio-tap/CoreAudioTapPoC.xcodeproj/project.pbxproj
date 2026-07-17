@@ -521,6 +521,7 @@
 				MACOSX_DEPLOYMENT_TARGET = 26.0;
 				MTL_ENABLE_DEBUG_INFO = NO;
 				MTL_FAST_MATH = YES;
+				OTHER_CODE_SIGN_FLAGS = "--timestamp";
 				PRODUCT_NAME = "$(TARGET_NAME)";
 				SDKROOT = macosx;
 				SWIFT_COMPILATION_MODE = wholemodule;
@@ -568,6 +569,7 @@
 				PRODUCT_BUNDLE_IDENTIFIER = "dev.hazakura-amp";
 				PRODUCT_MODULE_NAME = CoreAudioTapPoC;
 				PRODUCT_NAME = "Hazakura Amp";
+				PROVISIONING_PROFILE_SPECIFIER = "Hazakura Amp dev";
 				SDKROOT = macosx;
 				SWIFT_TREAT_WARNINGS_AS_ERRORS = NO;
 			};
@@ -676,6 +678,7 @@
 				MACOSX_DEPLOYMENT_TARGET = 26.0;
 				PRODUCT_BUNDLE_IDENTIFIER = "dev.hazakura-amp.safari-extension";
 				PRODUCT_MODULE_NAME = HazakuraAmpSafariExtension;
+				PROVISIONING_PROFILE_SPECIFIER = "Hazakura Amp safari-extension dev";
 				SDKROOT = macosx;
 				SKIP_INSTALL = YES;
 			};

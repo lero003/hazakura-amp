@@ -17,10 +17,10 @@
 - ✅ ゲインランプ・ソフトリミッタ・出力デバイス自動再接続
 - ✅ YouTube floating remote（Boost / 速度 / 字幕トグル / Repeat / 終了時100%）
 - ✅ 手元環境での音量ブースト確認（0% / 100% / 200% / 400%）
-- ✅ dev 配布スクリプト `./scripts/build_dev_distribution.sh`（Apple Development / team preview）
-- ✅ Developer ID Release 候補スクリプト（Developer ID プロファイルが必要）
-- ⚠️ Notarized DMG・自動アップデートは未整備
-- ⚠️ 公証済み一般配布・App Store 提出は未着手
+- ✅ 配布ビルド入口 `./scripts/build_dist.sh`（`release` / `dev` / `notarized` / `check`）
+- ✅ Developer ID + 配布用 provisioning profile で他マシン向け zip を1コマンド生成
+- ⚠️ 公証（notarize）はスクリプト済みだが未実行。現在の配布は Developer ID 署名 zip（未公証時は右クリック起動の場合あり）
+- ⚠️ Notarized DMG・自動アップデート・App Store 提出は未着手
 
 ## クイックリンク
 
@@ -67,12 +67,6 @@ xcodebuild \
   -destination 'platform=macOS' \
   -derivedDataPath build \
   build
-
-# 知人・登録 Mac 向け dev zip（推奨の暫定配布）
-./scripts/build_dev_distribution.sh
-
-# Developer ID Release 候補（Developer ID 用 provisioning profile が必要）
-./scripts/build_release_candidate.sh
 ```
 
 起動:
@@ -81,25 +75,44 @@ xcodebuild \
 open "spike/core-audio-tap/build/Build/Products/Debug/Hazakura Amp.app"
 ```
 
-### dev 版の配布
+### 配布 zip（入口は1つ）
+
+他マシンで使うビルドは、配布用プロファイル前提の Developer ID が基本です。
 
 ```bash
 cd spike/core-audio-tap
-./scripts/build_dev_distribution.sh
+
+# 事前確認（証明書・プロファイルの有無）
+./scripts/build_dist.sh check
+
+# 他マシン向け Developer ID zip（デフォルト）
+./scripts/build_dist.sh
+# → dist/HazakuraAmp-v0.4.1-developer-id.zip
+
+# 公証まで一発（任意の Mac でダブルクリック起動）
+./scripts/build_dist.sh notarized
+# → dist/HazakuraAmp-v0.4.1-notarized.zip
+
+# 登録 Mac 向け team preview（Devices 登録が必要）
+./scripts/build_dist.sh dev
 # → dist/HazakuraAmp-v0.4.1-dev.zip
-# → dist/HazakuraAmp-v0.4.1-dev.SHA256SUMS
 ```
 
-- **署名**: Apple Development + team provisioning profile（App Group 付き）
-- **対象**: Developer ポータルに登録された Mac / チーム内テスター
-- **公証なし**。Gatekeeper は初回「右クリック → 開く」が必要な場合あり
-- 別マシンで起動できない場合は、その Mac を Devices に登録してプロファイルを更新するか、Developer ID + 公証へ進む
-- 一般公開に近い配布は、App Group 付き **Developer ID プロファイル** を用意したうえで `build_release_candidate.sh` → `notarytool` / staple
+| コマンド | 署名 | 対象 |
+|---|---|---|
+| `./scripts/build_dist.sh` / `release` | Developer ID Application + 配布用 profile | 他マシン向け（未公証時は右クリック起動の場合あり） |
+| `./scripts/build_dist.sh notarized` | 上記 + notarize + staple | 任意の Mac（証明書・プロファイル不要） |
+| `./scripts/build_dist.sh dev` | Apple Development | ポータル登録済み Mac のみ |
 
-最新 dev リリース: [`v0.4.1-dev`](https://github.com/lero003/hazakura-amp/releases/tag/v0.4.1-dev)  
-詳細: [`spike/core-audio-tap/RELEASE_NOTES_v0.4.1.md`](./spike/core-audio-tap/RELEASE_NOTES_v0.4.1.md)
+- 配布用 profile 名は `project.yml` の `PROVISIONING_PROFILE_SPECIFIER`（`Hazakura Amp dev` / `Hazakura Amp safari-extension dev`）
+- 公証には Apple ID の App-Specific Password が必要（`HAZAKURA_NOTARY_*` 環境変数、または対話入力）
+- 旧スクリプト名 `build_release_candidate.sh` / `build_dev_distribution.sh` は `build_dist.sh` への互換ラッパー。`notarize_and_staple.sh` は公証本体（`build_dist.sh notarized` からも呼ばれる）
 
-普段の開発確認は `Debug` / Apple Development 署名を使います。公証と staple は外部配布直前の別工程です。
+最新 Developer ID プレビュー: [`v0.4.1-developer-id`](https://github.com/lero003/hazakura-amp/releases/tag/v0.4.1-developer-id)  
+以前の team preview: [`v0.4.1-dev`](https://github.com/lero003/hazakura-amp/releases/tag/v0.4.1-dev)  
+詳細: [`spike/core-audio-tap/RELEASE_NOTES_v0.4.1-developer-id.md`](./spike/core-audio-tap/RELEASE_NOTES_v0.4.1-developer-id.md)
+
+普段の開発確認は `Debug` / Apple Development 署名を使います。
 
 ## 企画書の要点（要約）
 

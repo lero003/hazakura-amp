@@ -27,6 +27,8 @@ settings:
       CODE_SIGN_STYLE: Manual
       CODE_SIGN_IDENTITY: Developer ID Application
       CODE_SIGN_INJECT_BASE_ENTITLEMENTS: NO
+      # Secure timestamp required for notarization (not timestamp=none).
+      OTHER_CODE_SIGN_FLAGS: "--timestamp"
 
 targets:
   CoreAudioTapPoC:
@@ -74,6 +76,9 @@ targets:
         DEAD_CODE_STRIPPING: YES
         SWIFT_TREAT_WARNINGS_AS_ERRORS: NO
         GCC_TREAT_WARNINGS_AS_ERRORS: NO
+      configs:
+        Release:
+          PROVISIONING_PROFILE_SPECIFIER: "Hazakura Amp dev"
     dependencies:
       - target: HazakuraAmpSafariExtension
         embed: true
@@ -128,6 +133,9 @@ targets:
         CODE_SIGN_ENTITLEMENTS: CoreAudioTapPoC/Resources/HazakuraAmpSafariExtension.entitlements
         ENABLE_APP_SANDBOX: YES
         SKIP_INSTALL: YES
+      configs:
+        Release:
+          PROVISIONING_PROFILE_SPECIFIER: "Hazakura Amp safari-extension dev"
     dependencies:
       - sdk: SafariServices.framework
 

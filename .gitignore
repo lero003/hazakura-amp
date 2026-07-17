@@ -19,6 +19,7 @@ Package.resolved
 .vscode/
 .idea/
 .superpowers/
+.zcode/
 
 # xcodegen-generated artifacts (regenerate with `xcodegen generate`)
 spike/*/build/

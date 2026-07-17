@@ -33,17 +33,21 @@
 
 ## Distribution
 - `main` includes v0.4.1.
-- GitHub prerelease: `v0.4.1-dev` with `HazakuraAmp-v0.4.1-dev.zip`.
-- Team preview zip: `cd spike/core-audio-tap && ./scripts/build_dev_distribution.sh`
-  - Output under `dist/HazakuraAmp-v0.4.1-dev.zip` (gitignored).
-  - Apple Development signed; requires Macs on the development profile.
-- Developer ID path `./scripts/build_release_candidate.sh` needs Developer ID provisioning profiles for `dev.hazakura-amp` + safari-extension with App Group; currently missing on this machine.
-- Next distribution upgrade: create those Developer ID profiles, rebuild Release zip, notarize + staple.
+- GitHub prereleases: `v0.4.1-dev` (Apple Development) and `v0.4.1-developer-id` (Developer ID, not notarized).
+- **Single entry:** `cd spike/core-audio-tap && ./scripts/build_dist.sh`
+  - `check` — identities + distribution profile preflight
+  - `release` (default) — Developer ID zip for other Macs → `dist/HazakuraAmp-v0.4.1-developer-id.zip`
+  - `notarized` — release + notarytool + staple → `dist/HazakuraAmp-v0.4.1-notarized.zip`
+  - `dev` — Apple Development team preview (registered Macs only)
+- Shared helpers: `scripts/lib/dist_common.sh`. Legacy script names are thin wrappers.
+- Release config in `project.yml` pins `PROVISIONING_PROFILE_SPECIFIER` to Developer ID distribution profiles ("Hazakura Amp dev" / "Hazakura Amp safari-extension dev", `ProvisionsAllDevices`).
+- Notary credentials: `HAZAKURA_NOTARY_APPLE_ID` / `HAZAKURA_NOTARY_TEAM_ID` / `HAZAKURA_NOTARY_PASSWORD`, or interactive prompt.
+- Next distribution upgrade: run `./scripts/build_dist.sh notarized` (needs App-Specific Password), then consider Notarized DMG + Sparkle auto-update.
 
 ## Next Actions
-1. Local smoke: presets, EQ, gain ramp feel, device switch reconnect.
-2. Safari smoke: speed, captions, video-end reset to 100%, boost remote.
-3. Create Developer ID profiles for app + extension, then notarized DMG.
+1. Run `./scripts/build_dist.sh notarized` with an App-Specific Password; confirm `spctl --assess` reports `accepted / source=Notarized Developer ID`.
+2. Local smoke: presets, EQ, gain ramp feel, device switch reconnect.
+3. Safari smoke: speed, captions, video-end reset to 100%, boost remote.
 4. Optional product: persist gain/EQ, launch-at-login.
 
 ## Avoid

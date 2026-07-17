@@ -174,13 +174,23 @@ final class GainProcessorTests: XCTestCase {
     }
 
     func testReleaseCandidateScriptUsesVersionedZipName() throws {
-        let source = try String(
+        let distScript = try String(
+            contentsOfFile: repositoryFile("spike/core-audio-tap/scripts/build_dist.sh"),
+            encoding: .utf8
+        )
+        let common = try String(
+            contentsOfFile: repositoryFile("spike/core-audio-tap/scripts/lib/dist_common.sh"),
+            encoding: .utf8
+        )
+        let releaseWrapper = try String(
             contentsOfFile: repositoryFile("spike/core-audio-tap/scripts/build_release_candidate.sh"),
             encoding: .utf8
         )
 
-        XCTAssertTrue(source.contains("CFBundleShortVersionString"))
-        XCTAssertTrue(source.contains("HazakuraAmp-v${APP_VERSION}-developer-id.zip"))
+        XCTAssertTrue(common.contains("CFBundleShortVersionString"))
+        XCTAssertTrue(distScript.contains("HazakuraAmp-v${app_version}-developer-id.zip"))
+        XCTAssertTrue(releaseWrapper.contains("build_dist.sh"))
+        XCTAssertTrue(releaseWrapper.contains("release"))
     }
 
     func testContentViewSourceKeepsOnlyEssentialBoostControls() throws {

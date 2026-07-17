@@ -151,37 +151,49 @@ chore: add .gitignore
 - 1コミット1意図を意識
 - 日本語/英語どちらでもよいが、**同じPR内では揃える**
 
-## リリース前段（v0.2以降で再評価）
+## 配布zipの作成（`build_dist.sh`）
 
-Developer ID署名＋Notarize までの流れは v0.1のDoDには含めないが、将来のために手順をここに控えておく。
+入口は `spike/core-audio-tap/scripts/build_dist.sh` のみ。証明書・配布用 profile の有無確認から、Developer ID zip、公証までを同じコマンドで扱う。
+
+必要なもの（`release` / `notarized`）:
+
+- Developer ID Application 証明書
+- `dev.hazakura-amp` / `dev.hazakura-amp.safari-extension` の **Developer ID 配布用 provisioning profile**（`ProvisionsAllDevices`、App Group `group.dev.hazakura-amp`）
+- profile 名は `project.yml` の `PROVISIONING_PROFILE_SPECIFIER` と一致（既定: `Hazakura Amp dev` / `Hazakura Amp safari-extension dev`）
 
 ```bash
-# 1. Archive
-xcodebuild \
-  -project hazakura-amp.xcodeproj \
-  -scheme hazakura-amp \
-  -configuration Release \
-  -archivePath build/HazakuraAmp.xcarchive \
-  archive
+cd spike/core-audio-tap
 
-# 2. Export
-xcodebuild \
-  -exportArchive \
-  -archivePath build/HazakuraAmp.xcarchive \
-  -exportPath build/ \
-  -exportOptionsPlist ExportOptions.plist
+# 証明書・プロファイルの事前確認
+./scripts/build_dist.sh check
 
-# 3. Notarize
-xcrun notarytool submit build/HazakuraAmp.dmg \
-  --apple-id <apple-id> \
-  --team-id <team-id> \
-  --password <app-specific-password> \
-  --wait
+# 他マシン向け Developer ID zip（デフォルト）
+./scripts/build_dist.sh
+# → dist/HazakuraAmp-v<ver>-developer-id.zip
+# → dist/HazakuraAmp-v<ver>-developer-id.SHA256SUMS
+# → dist/HazakuraAmp-v<ver>-developer-id-INSTALL.txt
 
-# 4. Staple
-xcrun stapler staple build/HazakuraAmp.dmg
+# 公証 + staple まで一発（任意の Mac でダブルクリック起動）
+./scripts/build_dist.sh notarized
+# → dist/HazakuraAmp-v<ver>-notarized.zip
+
+# 登録 Mac 向け team preview（Devices 登録が必要）
+./scripts/build_dist.sh dev
 ```
 
+公証の認証情報は環境変数で渡すこともできる（未設定なら対話入力にフォールバック）:
+
+```bash
+export HAZAKURA_NOTARY_APPLE_ID='you@example.com'
+export HAZAKURA_NOTARY_TEAM_ID='8BNUB2R9C8'
+export HAZAKURA_NOTARY_PASSWORD='<app-specific-password>'
+./scripts/build_dist.sh notarized
+```
+
+App-Specific Password は https://appleid.apple.com → Sign-In and Security → App-Specific Passwords で生成する。
+
+> 旧スクリプト名 `build_release_candidate.sh` / `build_dev_distribution.sh` は `build_dist.sh` への互換ラッパー。
+> `notarize_and_staple.sh` は公証本体で、`build_dist.sh notarized` から呼び出される。
 > 詳細は [PERMISSIONS §配布経路](./PERMISSIONS.md) を参照。
 
 ## デバッグTips
