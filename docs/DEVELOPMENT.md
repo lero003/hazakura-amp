@@ -181,16 +181,28 @@ cd spike/core-audio-tap
 ./scripts/build_dist.sh dev
 ```
 
-公証の認証情報は環境変数で渡すこともできる（未設定なら対話入力にフォールバック）:
+公証の認証情報（優先順）:
+
+1. 環境変数 `HAZAKURA_NOTARY_*`
+2. Keychain profile（`HAZAKURA_NOTARY_KEYCHAIN_PROFILE` / `notarytool store-credentials`）
+3. ローカル `.env.notary`（gitignored。例: `scripts/env.notary.example`）
+4. App Store Connect API key
+5. 対話入力（TTY があるときのみ）
 
 ```bash
 export HAZAKURA_NOTARY_APPLE_ID='you@example.com'
 export HAZAKURA_NOTARY_TEAM_ID='8BNUB2R9C8'
-export HAZAKURA_NOTARY_PASSWORD='<app-specific-password>'
+export HAZAKURA_NOTARY_PASSWORD='xxxx-xxxx-xxxx-xxxx'
+./scripts/build_dist.sh notarized
+
+# または
+cp scripts/env.notary.example .env.notary   # 編集してから
 ./scripts/build_dist.sh notarized
 ```
 
 App-Specific Password は https://appleid.apple.com → Sign-In and Security → App-Specific Passwords で生成する。
+
+> GitHub 経由で Safari 拡張が動かない場合、多くは **未公証** が原因。TestFlight ではなく Developer ID + notarize が正しい直配布経路。
 
 > 旧スクリプト名 `build_release_candidate.sh` / `build_dev_distribution.sh` は `build_dist.sh` への互換ラッパー。
 > `notarize_and_staple.sh` は公証本体で、`build_dist.sh notarized` から呼び出される。

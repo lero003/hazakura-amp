@@ -21,6 +21,11 @@ Package.resolved
 .superpowers/
 .zcode/
 
+# Notarization secrets (never commit)
+.env.notary
+**/.env.notary
+*.p8
+
 # xcodegen-generated artifacts (regenerate with `xcodegen generate`)
 spike/*/build/
 spike/*/dist/

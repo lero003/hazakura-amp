@@ -14,7 +14,15 @@
 # Credentials (in priority order):
 #   1. Env vars: HAZAKURA_NOTARY_APPLE_ID / HAZAKURA_NOTARY_TEAM_ID /
 #      HAZAKURA_NOTARY_PASSWORD
-#   2. Interactive prompt (password via read -s, not echoed or saved to history)
+#   2. Keychain profile: HAZAKURA_NOTARY_KEYCHAIN_PROFILE (from
+#      `xcrun notarytool store-credentials`)
+#   3. Local env file (gitignored), first match:
+#        spike/core-audio-tap/.env.notary
+#        repo-root/.env.notary
+#   4. Interactive prompt (password via read -s, not echoed or saved to history)
+#
+# Optional App Store Connect API key auth (instead of Apple ID password):
+#   HAZAKURA_NOTARY_KEY_ID / HAZAKURA_NOTARY_ISSUER / HAZAKURA_NOTARY_KEY_PATH
 #
 # Outputs under dist/:
 #   HazakuraAmp-v<ver>-notarized.zip       (notarized + stapled app, re-zipped)
@@ -26,6 +34,30 @@ SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 # shellcheck source=lib/dist_common.sh
 source "$SCRIPT_DIR/lib/dist_common.sh"
 DEFAULT_TEAM_ID="8BNUB2R9C8"
+DEFAULT_APPLE_ID="${HAZAKURA_NOTARY_APPLE_ID_DEFAULT:-lero003@gmail.com}"
+# PROJECT_DIR is spike/core-audio-tap; repo root is one level up.
+REPO_ROOT="$(cd "$PROJECT_DIR/.." && pwd)"
+
+load_notary_env_file() {
+  local f
+  for f in \
+    "${HAZAKURA_NOTARY_ENV_FILE:-}" \
+    "$PROJECT_DIR/.env.notary" \
+    "$REPO_ROOT/.env.notary"
+  do
+    [[ -n "$f" && -f "$f" ]] || continue
+    echo "==> Loading notary credentials from $f" >&2
+    # shellcheck disable=SC1090
+    set -a
+    # shellcheck disable=SC1090
+    source "$f"
+    set +a
+    return 0
+  done
+  return 1
+}
+
+load_notary_env_file || true
 
 ZIP_PATH="${1:-}"
 if [[ -z "$ZIP_PATH" ]]; then
@@ -82,32 +114,101 @@ NOTES_PATH="$DIST_DIR/HazakuraAmp-v${APP_VERSION}-notarized-INSTALL.txt"
 APPLE_ID="${HAZAKURA_NOTARY_APPLE_ID:-}"
 TEAM_ID="${HAZAKURA_NOTARY_TEAM_ID:-$DEFAULT_TEAM_ID}"
 PASSWORD="${HAZAKURA_NOTARY_PASSWORD:-}"
+KEYCHAIN_PROFILE="${HAZAKURA_NOTARY_KEYCHAIN_PROFILE:-}"
+KEY_ID="${HAZAKURA_NOTARY_KEY_ID:-}"
+ISSUER="${HAZAKURA_NOTARY_ISSUER:-}"
+KEY_PATH="${HAZAKURA_NOTARY_KEY_PATH:-}"
 
-if [[ -z "$APPLE_ID" ]]; then
-  read -r -p "Apple ID (email): " APPLE_ID
-fi
-if [[ -z "$PASSWORD" ]]; then
-  echo "App-Specific Password (create at https://appleid.apple.com → Sign-In and Security → App-Specific Passwords):"
-  read -rs -p "Password: " PASSWORD
-  echo
+# Prefer non-interactive auth modes first (agents / CI).
+AUTH_MODE=""
+if [[ -n "$KEYCHAIN_PROFILE" ]]; then
+  AUTH_MODE="keychain-profile"
+elif [[ -n "$KEY_ID" && -n "$ISSUER" && -n "$KEY_PATH" ]]; then
+  AUTH_MODE="api-key"
+  if [[ ! -f "$KEY_PATH" ]]; then
+    echo "App Store Connect API key not found: $KEY_PATH" >&2
+    exit 1
+  fi
+else
+  if [[ -z "$APPLE_ID" ]]; then
+    if [[ -t 0 ]]; then
+      read -r -p "Apple ID (email) [$DEFAULT_APPLE_ID]: " APPLE_ID
+      APPLE_ID="${APPLE_ID:-$DEFAULT_APPLE_ID}"
+    else
+      APPLE_ID="$DEFAULT_APPLE_ID"
+    fi
+  fi
+  if [[ -z "$PASSWORD" ]]; then
+    if [[ -t 0 ]]; then
+      echo "App-Specific Password (create at https://appleid.apple.com → Sign-In and Security → App-Specific Passwords):"
+      read -rs -p "Password: " PASSWORD
+      echo
+    fi
+  fi
+  if [[ -n "$APPLE_ID" && -n "$PASSWORD" ]]; then
+    AUTH_MODE="apple-id"
+  fi
 fi
 
-if [[ -z "$APPLE_ID" || -z "$PASSWORD" ]]; then
-  echo "Apple ID and password are required." >&2
+if [[ -z "$AUTH_MODE" ]]; then
+  cat >&2 <<EOF
+error: No notarization credentials available.
+
+GitHub downloads need Developer ID + notarization for Safari extensions.
+Provide credentials in one of these ways, then re-run:
+
+  1) Env vars (current shell):
+       export HAZAKURA_NOTARY_APPLE_ID='$DEFAULT_APPLE_ID'
+       export HAZAKURA_NOTARY_TEAM_ID='$DEFAULT_TEAM_ID'
+       export HAZAKURA_NOTARY_PASSWORD='xxxx-xxxx-xxxx-xxxx'
+       ./scripts/build_dist.sh notarized
+
+  2) Local file (gitignored):
+       cp scripts/env.notary.example .env.notary
+       # edit .env.notary, then:
+       ./scripts/build_dist.sh notarized
+
+  3) Keychain profile (one-time):
+       xcrun notarytool store-credentials hazakura-notary \\
+         --apple-id '$DEFAULT_APPLE_ID' --team-id '$DEFAULT_TEAM_ID'
+       export HAZAKURA_NOTARY_KEYCHAIN_PROFILE=hazakura-notary
+       ./scripts/build_dist.sh notarized
+
+  4) App Store Connect API key:
+       export HAZAKURA_NOTARY_KEY_ID=...
+       export HAZAKURA_NOTARY_ISSUER=...
+       export HAZAKURA_NOTARY_KEY_PATH=/path/to/AuthKey_XXX.p8
+EOF
   exit 1
 fi
 
 # --- Submit ------------------------------------------------------------------
 mkdir -p "$DIST_DIR"
 
-echo "==> Submitting to notarization service (this can take several minutes)"
+echo "==> Submitting to notarization service via $AUTH_MODE (this can take several minutes)"
 SUBMIT_OUTPUT="$WORK_DIR/submit.txt"
 set +e
-xcrun notarytool submit "$ZIP_PATH" \
-  --apple-id "$APPLE_ID" \
-  --team-id "$TEAM_ID" \
-  --password "$PASSWORD" \
-  --wait > "$SUBMIT_OUTPUT" 2>&1
+case "$AUTH_MODE" in
+  keychain-profile)
+    xcrun notarytool submit "$ZIP_PATH" \
+      --keychain-profile "$KEYCHAIN_PROFILE" \
+      --wait > "$SUBMIT_OUTPUT" 2>&1
+    ;;
+  api-key)
+    xcrun notarytool submit "$ZIP_PATH" \
+      --key "$KEY_PATH" \
+      --key-id "$KEY_ID" \
+      --issuer "$ISSUER" \
+      --wait > "$SUBMIT_OUTPUT" 2>&1
+    ;;
+  apple-id)
+    xcrun notarytool submit "$ZIP_PATH" \
+      --apple-id "$APPLE_ID" \
+      --team-id "$TEAM_ID" \
+      --password "$PASSWORD" \
+      --wait > "$SUBMIT_OUTPUT" 2>&1
+    ;;
+esac
 SUBMIT_STATUS=$?
 set -e
 
@@ -119,8 +220,18 @@ if [[ $SUBMIT_STATUS -ne 0 ]]; then
   echo "Notarization did not complete successfully." >&2
   if [[ -n "$SUBMISSION_ID" ]]; then
     echo "Fetch the detailed log with:" >&2
-    echo "  xcrun notarytool log '$SUBMISSION_ID' \\" >&2
-    echo "    --apple-id '$APPLE_ID' --team-id '$TEAM_ID' --password <password>" >&2
+    case "$AUTH_MODE" in
+      keychain-profile)
+        echo "  xcrun notarytool log '$SUBMISSION_ID' --keychain-profile '$KEYCHAIN_PROFILE'" >&2
+        ;;
+      api-key)
+        echo "  xcrun notarytool log '$SUBMISSION_ID' --key '$KEY_PATH' --key-id '$KEY_ID' --issuer '$ISSUER'" >&2
+        ;;
+      *)
+        echo "  xcrun notarytool log '$SUBMISSION_ID' \\" >&2
+        echo "    --apple-id '$APPLE_ID' --team-id '$TEAM_ID' --password <password>" >&2
+        ;;
+    esac
   fi
   exit "$SUBMIT_STATUS"
 fi
