@@ -29,11 +29,11 @@
 - YouTube DOM for captions button can change; selectors are best-effort.
 - Video-ended boost reset depends on `ended` events and SPA navigation rebinding.
 - EQ + high boost can still clip; limiter reduces but does not eliminate distortion.
-- Safari manual E2E still required for extension packaging/signing path.
+- Safari manual E2E still required after packaging fixes (install → enable extension → YouTube remote).
 
 ## Distribution
 - `main` includes v0.4.1.
-- GitHub prereleases: `v0.4.1-dev` (Apple Development) and `v0.4.1-developer-id` (Developer ID, not notarized).
+- GitHub prereleases: `v0.4.1-dev` (Apple Development), `v0.4.1-developer-id` (broken Safari zip — do not use), `v0.4.1-developer-id-2` (Developer ID packaging fix, not notarized).
 - **Single entry:** `cd spike/core-audio-tap && ./scripts/build_dist.sh`
   - `check` — identities + distribution profile preflight
   - `release` (default) — Developer ID zip for other Macs → `dist/HazakuraAmp-v0.4.1-developer-id.zip`
@@ -42,12 +42,14 @@
 - Shared helpers: `scripts/lib/dist_common.sh`. Legacy script names are thin wrappers.
 - Release config in `project.yml` pins `PROVISIONING_PROFILE_SPECIFIER` to Developer ID distribution profiles ("Hazakura Amp dev" / "Hazakura Amp safari-extension dev", `ProvisionsAllDevices`).
 - Notary credentials: `HAZAKURA_NOTARY_APPLE_ID` / `HAZAKURA_NOTARY_TEAM_ID` / `HAZAKURA_NOTARY_PASSWORD`, or interactive prompt.
-- Next distribution upgrade: run `./scripts/build_dist.sh notarized` (needs App-Specific Password), then consider Notarized DMG + Sparkle auto-update.
+- **Safari / zip packaging pitfall (fixed in packaging scripts):** old zips used `ditto -c -k --keepParent`, which embeds AppleDouble `._*` for xattrs. Plain `unzip` materializes those files inside the signed bundle, breaks codesign, and Safari returns `SFErrorDomain:1`. `package_zip` now strips xattrs (`--norsrc --noextattr` + `xattr -cr`) and regression-checks with plain `unzip` + `codesign --verify`.
+- "Allow unsigned extensions" is only a Develop-menu workaround and resets when Safari quits; Developer ID (ideally notarized) builds should not need it.
+- Next distribution upgrade: rebuild + publish a fixed zip (`./scripts/build_dist.sh release` or `notarized`), then consider Notarized DMG + Sparkle auto-update.
 
 ## Next Actions
-1. Run `./scripts/build_dist.sh notarized` with an App-Specific Password; confirm `spctl --assess` reports `accepted / source=Notarized Developer ID`.
-2. Local smoke: presets, EQ, gain ramp feel, device switch reconnect.
-3. Safari smoke: speed, captions, video-end reset to 100%, boost remote.
+1. Safari smoke on a clean install from `v0.4.1-developer-id-2` (plain unzip → `/Applications` → enable extension).
+2. Run `./scripts/build_dist.sh notarized` with an App-Specific Password when ready for double-click open.
+3. Local smoke: presets, EQ, gain ramp feel, device switch reconnect.
 4. Optional product: persist gain/EQ, launch-at-login.
 
 ## Avoid

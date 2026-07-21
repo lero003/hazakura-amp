@@ -124,12 +124,73 @@ verify_codesign() {
   codesign --verify --strict --deep --verbose=2 "$app_path"
 }
 
+# Package a signed .app into a zip that survives plain `unzip` (GitHub downloads,
+# command-line unzip, etc.) without injecting AppleDouble `._*` files.
+#
+# Why this exists:
+#   `ditto -c -k --keepParent` preserves xattrs (e.g. com.apple.provenance) as
+#   AppleDouble entries. Archive Utility / ditto rehydrate them as xattrs, but
+#   plain `unzip` materializes them as literal `._*` files inside the bundle.
+#   That breaks the code signature seal, and Safari then returns
+#   SFErrorDomain:1 when looking up the embedded Web Extension.
 package_zip() {
   local app_path="$1"
   local zip_path="$2"
+  local app_name stage_dir verify_dir staged_app
+
+  [[ -d "$app_path" ]] || die "package_zip: app not found: $app_path"
+  require_cmd unzip
+  app_name="$(basename "$app_path")"
   mkdir -p "$(dirname "$zip_path")"
   rm -f "$zip_path"
-  ditto -c -k --keepParent "$app_path" "$zip_path"
+
+  stage_dir="$(mktemp -d "${TMPDIR:-/tmp}/hazakura-amp-package.XXXXXX")"
+  verify_dir="$(mktemp -d "${TMPDIR:-/tmp}/hazakura-amp-unzip-verify.XXXXXX")"
+
+  # Do not use EXIT traps here — callers (e.g. notarize_and_staple) own EXIT.
+  # Clean up explicitly on every path so we never clobber outer traps.
+  # shellcheck disable=SC2317
+  _package_zip_cleanup() {
+    rm -rf "${stage_dir:-}" "${verify_dir:-}"
+  }
+
+  # Copy without resource forks / extended attributes so the zip has no AppleDouble.
+  if ! ditto --norsrc --noextattr "$app_path" "$stage_dir/$app_name"; then
+    _package_zip_cleanup
+    die "package_zip: failed to stage app without xattrs"
+  fi
+  staged_app="$stage_dir/$app_name"
+  xattr -cr "$staged_app" 2>/dev/null || true
+  find "$staged_app" \( -name '._*' -o -name '.DS_Store' \) -delete 2>/dev/null || true
+
+  info "Verifying staged app still codesigns after stripping xattrs"
+  if ! codesign --verify --strict --deep --verbose=2 "$staged_app"; then
+    _package_zip_cleanup
+    die "package_zip: codesign failed after stripping xattrs"
+  fi
+
+  # --norsrc/--noextattr keep provenance/xattrs out of the archive entirely.
+  if ! ditto -c -k --norsrc --noextattr --keepParent "$staged_app" "$zip_path"; then
+    _package_zip_cleanup
+    die "package_zip: failed to create zip"
+  fi
+
+  # Regression gate: plain unzip is what many GitHub downloaders use.
+  info "Verifying packaged zip survives plain unzip without breaking codesign"
+  if ! unzip -q "$zip_path" -d "$verify_dir"; then
+    _package_zip_cleanup
+    die "package_zip: plain unzip of packaged zip failed"
+  fi
+  if find "$verify_dir" \( -name '._*' -o -name '.DS_Store' \) | grep -q .; then
+    _package_zip_cleanup
+    die "packaged zip still produces AppleDouble/._ files after plain unzip"
+  fi
+  if ! codesign --verify --strict --deep --verbose=2 "$verify_dir/$app_name"; then
+    _package_zip_cleanup
+    die "codesign failed after plain unzip of packaged zip (Safari extension will not load)"
+  fi
+
+  _package_zip_cleanup
 }
 
 write_checksum() {

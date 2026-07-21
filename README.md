@@ -20,6 +20,7 @@
 - ✅ 配布ビルド入口 `./scripts/build_dist.sh`（`release` / `dev` / `notarized` / `check`）
 - ✅ Developer ID + 配布用 provisioning profile で他マシン向け zip を1コマンド生成
 - ⚠️ 公証（notarize）はスクリプト済みだが未実行。現在の配布は Developer ID 署名 zip（未公証時は右クリック起動の場合あり）
+- ✅ Safari 拡張用 zip パッケージ修正済み（AppleDouble `._*` による署名破壊 / `SFErrorDomain:1`）。配布は `v0.4.1-developer-id-2` 以降を使う
 - ⚠️ Notarized DMG・自動アップデート・App Store 提出は未着手
 
 ## クイックリンク
@@ -108,7 +109,8 @@ cd spike/core-audio-tap
 - 公証には Apple ID の App-Specific Password が必要（`HAZAKURA_NOTARY_*` 環境変数、または対話入力）
 - 旧スクリプト名 `build_release_candidate.sh` / `build_dev_distribution.sh` は `build_dist.sh` への互換ラッパー。`notarize_and_staple.sh` は公証本体（`build_dist.sh notarized` からも呼ばれる）
 
-最新 Developer ID プレビュー: [`v0.4.1-developer-id`](https://github.com/lero003/hazakura-amp/releases/tag/v0.4.1-developer-id)  
+最新 Developer ID プレビュー: [`v0.4.1-developer-id-2`](https://github.com/lero003/hazakura-amp/releases/tag/v0.4.1-developer-id-2)（Safari 拡張 zip 修正）  
+旧 zip（壊れた署名の可能性）: [`v0.4.1-developer-id`](https://github.com/lero003/hazakura-amp/releases/tag/v0.4.1-developer-id)  
 以前の team preview: [`v0.4.1-dev`](https://github.com/lero003/hazakura-amp/releases/tag/v0.4.1-dev)  
 詳細: [`spike/core-audio-tap/RELEASE_NOTES_v0.4.1-developer-id.md`](./spike/core-audio-tap/RELEASE_NOTES_v0.4.1-developer-id.md)
 

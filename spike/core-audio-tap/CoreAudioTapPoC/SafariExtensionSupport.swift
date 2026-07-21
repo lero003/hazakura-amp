@@ -75,7 +75,7 @@ final class SafariExtensionController: ObservableObject, @unchecked Sendable {
         if let errorMessage {
             self.isEnabled = nil
             statusText = "未検出"
-            detailText = "Safari が拡張を認識できませんでした。"
+            detailText = Self.detailText(forErrorMessage: errorMessage)
             lastError = errorMessage
             return
         }
@@ -83,7 +83,7 @@ final class SafariExtensionController: ObservableObject, @unchecked Sendable {
         guard let isEnabled else {
             self.isEnabled = nil
             statusText = "未検出"
-            detailText = "Safari から拡張状態が返りませんでした。"
+            detailText = "Safari から拡張状態が返りませんでした。アプリを /Applications に置いて一度起動し、Safari を再起動してから再確認してください。"
             lastError = nil
             return
         }
@@ -94,5 +94,20 @@ final class SafariExtensionController: ObservableObject, @unchecked Sendable {
             ? "Safari 拡張は有効です。YouTube の動画ページでフローティングバーを確認してください。"
             : "Safari 拡張は登録されていますが無効です。Safari の拡張設定で有効化してください。"
         lastError = nil
+    }
+
+    /// Maps known Safari lookup failures to actionable install guidance.
+    /// SFErrorDomain:1 is commonly "extension not found / signature invalid".
+    private static func detailText(forErrorMessage errorMessage: String) -> String {
+        let lowered = errorMessage.lowercased()
+        if lowered.contains("sferrordomain:1") || lowered.contains("sferrordomain error 1") {
+            return """
+            Safari が埋め込み拡張を認識できませんでした（SFErrorDomain:1）。
+            よくある原因は、zip 展開時にコード署名が壊れていることです。\
+            「Hazakura Amp.app」を /Applications に置き直し、アプリを一度起動してから Safari を再起動し、\
+            設定 → 拡張機能 で有効化してください。未署名拡張の許可は不要です（Developer ID 署名ビルドの場合）。
+            """
+        }
+        return "Safari が拡張を認識できませんでした。アプリを /Applications に置いて起動し、Safari を再起動してから再確認してください。"
     }
 }

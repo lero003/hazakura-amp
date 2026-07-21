@@ -23,8 +23,8 @@
 set -euo pipefail
 
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
-PROJECT_DIR="$(cd "$SCRIPT_DIR/.." && pwd)"
-DIST_DIR="${DIST_DIR:-$PROJECT_DIR/dist}"
+# shellcheck source=lib/dist_common.sh
+source "$SCRIPT_DIR/lib/dist_common.sh"
 DEFAULT_TEAM_ID="8BNUB2R9C8"
 
 ZIP_PATH="${1:-}"
@@ -143,11 +143,10 @@ spctl --assess --type execute --verbose "$APP_PATH"
 # --- Repackage ---------------------------------------------------------------
 echo "==> Repackaging notarized + stapled app"
 rm -f "$NOTARIZED_ZIP_PATH" "$CHECKSUM_PATH" "$NOTES_PATH"
-ditto -c -k --keepParent "$APP_PATH" "$NOTARIZED_ZIP_PATH"
-(
-  cd "$DIST_DIR"
-  shasum -a 256 "$NOTARIZED_ZIP_NAME" > "$(basename "$CHECKSUM_PATH")"
-)
+# Use package_zip so plain-unzip clients (GitHub zip downloads) do not get
+# AppleDouble `._*` files that break the code signature / Safari extension.
+package_zip "$APP_PATH" "$NOTARIZED_ZIP_PATH"
+write_checksum "$NOTARIZED_ZIP_PATH" "$CHECKSUM_PATH"
 
 cat > "$NOTES_PATH" <<EOF
 Hazakura Amp v${APP_VERSION} (build ${APP_BUILD}) — notarized release
@@ -159,13 +158,17 @@ What this is
 - Includes Safari YouTube remote extension inside the app bundle
 
 Install
-1. Unzip this archive
-2. Move "Hazakura Amp.app" to /Applications
+1. Unzip this archive (Finder double-click or `unzip` are both OK for this build)
+2. Move "Hazakura Amp.app" to /Applications (recommended for Safari extension discovery)
 3. Launch by double-clicking (first launch may still ask for system audio access)
-4. Optional: enable the Safari extension under Settings → Extensions
+4. Enable Safari extension: Safari → Settings → Extensions → Hazakura Amp
+   (no Develop menu / "Allow unsigned extensions" needed)
+
+Safari extension notes
+- Extension is embedded in the app; enable it after the first app launch
+- If SFErrorDomain:1 appears, reinstall a fresh unzip to /Applications, launch once, restart Safari
 
 Verify signature (optional)
-  xattr -dr com.apple.quarantine "Hazakura Amp.app"
   codesign --verify --strict --deep --verbose=2 "Hazakura Amp.app"
   spctl --assess --type execute --verbose "Hazakura Amp.app"
   # expect: accepted / source=Notarized Developer ID

@@ -279,6 +279,9 @@ final class GainProcessorTests: XCTestCase {
         XCTAssertTrue(support.contains("static func showExtensionPreferences"))
         XCTAssertTrue(support.contains("@escaping @Sendable"))
         XCTAssertTrue(support.contains("DispatchQueue.main.async"))
+        XCTAssertTrue(support.contains("detailText(forErrorMessage:"))
+        XCTAssertTrue(support.contains("sferrordomain:1"))
+        XCTAssertTrue(support.contains("/Applications"))
         XCTAssertTrue(contentView.contains("SafariExtensionDiagnosticsView"))
         XCTAssertTrue(contentView.contains("SetupChecklistView"))
         XCTAssertTrue(contentView.contains("GroupBox(\"初回セットアップ\")"))
@@ -288,6 +291,28 @@ final class GainProcessorTests: XCTestCase {
         XCTAssertTrue(contentView.contains("controller.refreshState()"))
         XCTAssertTrue(contentView.contains("Button(\"拡張設定を開く\")"))
         XCTAssertTrue(contentView.contains("controller.openPreferences()"))
+    }
+
+    func testDistributionPackageZipStripsAppleDoubleAndVerifiesPlainUnzip() throws {
+        let packageHelper = try String(
+            contentsOfFile: repositoryFile("spike/core-audio-tap/scripts/lib/dist_common.sh"),
+            encoding: .utf8
+        )
+        XCTAssertTrue(packageHelper.contains("package_zip()"))
+        XCTAssertTrue(packageHelper.contains("--norsrc"))
+        XCTAssertTrue(packageHelper.contains("--noextattr"))
+        XCTAssertTrue(packageHelper.contains("xattr -cr"))
+        XCTAssertTrue(packageHelper.contains("unzip -q"))
+        XCTAssertTrue(packageHelper.contains("AppleDouble"))
+        XCTAssertTrue(packageHelper.contains("SFErrorDomain:1"))
+        XCTAssertTrue(packageHelper.contains("codesign --verify --strict --deep"))
+
+        let notarize = try String(
+            contentsOfFile: repositoryFile("spike/core-audio-tap/scripts/notarize_and_staple.sh"),
+            encoding: .utf8
+        )
+        XCTAssertTrue(notarize.contains("package_zip"))
+        XCTAssertFalse(notarize.contains("ditto -c -k --keepParent \"$APP_PATH\""))
     }
 
     @MainActor

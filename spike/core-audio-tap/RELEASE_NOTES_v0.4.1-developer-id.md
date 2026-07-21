@@ -50,6 +50,22 @@ cd spike/core-audio-tap
 ./scripts/build_dist.sh notarized
 ```
 
+## Packaging note (Safari extension / SFErrorDomain:1)
+
+Early GitHub zip assets packaged with plain `ditto -c -k --keepParent` could embed AppleDouble `._*` files for extended attributes. After a plain `unzip`, those files appear inside the signed bundle, **break codesign**, and Safari returns `SFErrorDomain:1` for the embedded Web Extension. “Allow unsigned extensions” is not a reliable fix (Develop menu only; resets when Safari quits).
+
+Fixed packaging (`package_zip` in `scripts/lib/dist_common.sh`):
+- strip resource forks / xattrs (`--norsrc --noextattr`, `xattr -cr`)
+- regression-check with plain `unzip` + `codesign --verify --strict --deep`
+
+Rebuild / re-upload the zip before sharing again:
+
+```bash
+cd spike/core-audio-tap
+./scripts/build_dist.sh release
+# or: ./scripts/build_dist.sh notarized
+```
+
 ## Not in this release
 
 - Notarized / stapled zip (run `./scripts/build_dist.sh notarized` when App-Specific Password is available)

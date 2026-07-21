@@ -88,11 +88,16 @@ What this is
 - Includes Safari YouTube remote extension inside the app bundle
 
 Install
-1. Unzip this archive
-2. Move "Hazakura Amp.app" to /Applications
+1. Unzip this archive (Finder double-click or `unzip` are both OK for this build)
+2. Move "Hazakura Amp.app" to /Applications (recommended — Safari discovers embedded extensions more reliably there)
 3. First launch: right-click → Open (if Gatekeeper warns)
 4. Allow system audio access when prompted (not microphone)
-5. Optional: enable Safari extension under Settings → Extensions
+5. Enable Safari extension: Safari → Settings → Extensions → Hazakura Amp
+
+Safari extension notes
+- Developer preview signing may still require team-registered Macs
+- "Allow unsigned extensions" is a develop-menu workaround and resets when Safari quits; prefer a Developer ID / notarized build for normal use
+- If the app reports SFErrorDomain:1, the bundle signature is likely invalid — re-download and reinstall to /Applications
 
 Limits
 - Macs not registered in the development provisioning profile may refuse to launch
@@ -163,10 +168,17 @@ What this is
 - Includes Safari YouTube remote extension inside the app bundle
 
 Install
-1. Unzip this archive
-2. Move "Hazakura Amp.app" to /Applications
+1. Unzip this archive (Finder double-click or `unzip` are both OK for this build)
+2. Move "Hazakura Amp.app" to /Applications (recommended for Safari extension discovery)
 3. First launch: right-click → Open if Gatekeeper warns
 4. Allow system audio access when prompted (not microphone)
+5. Enable Safari extension: Safari → Settings → Extensions → Hazakura Amp
+   (no Develop menu / "Allow unsigned extensions" needed for Developer ID builds)
+
+Safari extension notes
+- The extension ships inside the app (Contents/PlugIns). Do not move only the .appex.
+- If the app shows SFErrorDomain:1, reinstall a freshly unzipped copy to /Applications,
+  launch the app once, then quit/reopen Safari.
 
 Next step for frictionless any-Mac launch
   ./scripts/build_dist.sh notarized
